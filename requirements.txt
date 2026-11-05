@@ -1,0 +1,9 @@
+# Production and Testing Requirements for Gemini Cost Arbiter MCP
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+httpx>=0.28.0
+python-dotenv>=1.0.0
+pytest>=8.3.0
+pytest-asyncio>=0.25.0
+respx>=0.22.0
+

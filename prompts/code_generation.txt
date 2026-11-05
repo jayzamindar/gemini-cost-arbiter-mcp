@@ -1,0 +1,105 @@
+================================================================================
+GEMINI AUTONOMOUS CLOUD-COST ARBITER (gemini-cost-arbiter-mcp)
+CODE GENERATION ENGINEERING PROMPTS LOG
+================================================================================
+
+PHASE 1: SYSTEM REQUIREMENTS & USER REQUIREMENTS DOCUMENT (URD)
+--------------------------------------------------------------------------------
+Role: Principal Cloud FinOps Architect & Lead SRE Specialist
+System Paradigm: Antigravity Architecture, Python 3.13+, AsyncIO, Pydantic v2
+Model Target: Gemini 3.8 Flash High / OpenRouter Qwen 2.5 Coder 32B Instruct
+Context Budget: Under 100k tokens footprint, zero framework boilerplate
+
+Prompt:
+"Draft an enterprise-grade User Requirements Document (URD.md) for the project 
+`gemini-cost-arbiter-mcp`. The system is an autonomous, asynchronous FinOps intelligence 
+engine that ingests raw AWS cloud infrastructure utilization telemetry (EC2, RDS, S3), 
+detects compute, memory, and storage waste, and leverages LLM high-cognitive reasoning 
+to synthesize deterministic, schema-validated remediation execution payloads for Model 
+Context Protocol (MCP) clients and downstream infrastructure automation tools.
+
+Key Requirements:
+1. Multi-dimensional telemetry ingestion (CPU avg/p95, Memory, Connections, Storage Tiers).
+2. Direct raw metric ingestion with zero human preprocessing.
+3. Strict Pydantic v2 structured egress contracts.
+4. Calibrated Safety Risk Scoring (1 to 5) with mandatory automated system mitigations 
+   for scores >= 3.
+5. High-reliability dual-path design: AI reasoning with deterministic heuristic fallback.
+6. Standard Model Context Protocol (MCP) JSON-RPC 2.0 tool interface."
+
+
+================================================================================
+PHASE 2: TECHNICAL ARCHITECTURE & DESIGN (ARCHITECTURE.md)
+--------------------------------------------------------------------------------
+Prompt:
+"Generate a comprehensive System Architecture Document (ARCHITECTURE.md) for 
+`gemini-cost-arbiter-mcp`. Provide:
+1. Executive architectural vision and core design tenets.
+2. C4 container view diagram detailing client layers, MCP gateway, Telemetry Normalization, 
+   Gemini AI Reasoner, Heuristic Fallback, Safety Guardrail Engine, and Execution Payload Egress.
+3. Sequence flow diagram illustrating both the primary LLM reasoning path and the automated 
+   fallback path on API degradation/timeout.
+4. Detailed specifications for Pydantic v2 schema design, risk scoring engine (1 to 5), 
+   and the Model Context Protocol (MCP) tool registrations.
+5. End-to-end execution examples for Terraform and AWS CLI remediation commands."
+
+
+================================================================================
+PHASE 3: DATA CONTRACTS & SCHEMAS (app/schemas.py)
+--------------------------------------------------------------------------------
+Prompt:
+"Implement production-grade, zero-boilerplate Pydantic v2 data models in `app/schemas.py` 
+supporting multi-dimensional telemetry ingestion, remediation action synthesis, and 
+MCP payload wrapping.
+
+Requirements:
+- Enums: CloudResourceType (EC2, RDS, S3), ActionType (RIGHTSIZE_INSTANCE, STOP_INSTANCE, 
+  STOP_DB_INSTANCE, TRANSITION_STORAGE_TIER, TERMINATE, DOWNSIZE, IGNORE).
+- Telemetry Models: EC2Metrics (with CPU avg/p95, memory, network, monthly spend), 
+  RDSMetrics (CPU, memory, storage allocated/used, connections, Multi-AZ), 
+  S3Metrics (storage GB, object count, current storage class, access patterns).
+- TelemetryBatch: Container for fleet telemetry with automated aggregations.
+- Remediation Models: RemediationActionItem with safety_risk_score (1 to 5 validation), 
+  system_mitigations list (mandatory non-empty if score >= 3), and execution_payload dict.
+- RemediationPlan: Aggregated remediation plan with total current spend, projected savings, 
+  projected spend, average and max risk score.
+- DynamicFallbackModel and module-level __getattr__ fallback for self-healing schema resilience."
+
+
+================================================================================
+PHASE 4: ARBITER ENGINE & MCP INTERFACE (app/engine.py)
+--------------------------------------------------------------------------------
+Prompt:
+"Implement the core asynchronous FinOps orchestrator in `app/engine.py` using Python 3.13+ 
+asyncio, httpx.AsyncClient, and Pydantic v2.
+
+Core Capabilities:
+1. `GeminiCostArbiterEngine`:
+   - Configurable API key, endpoint, timeout, and max acceptable risk.
+   - Dual-path arbitration: attempts upstream Gemini 3.8 Flash High / OpenRouter reasoning 
+     first, seamlessly falls back to the deterministic heuristic engine on API failure, 503, 
+     or timeout.
+   - Deterministic Heuristic Engine: rule-based evaluation detecting EC2 low CPU/p95, 
+     RDS zero-connection idle instances, and S3 cold storage (>50% infrequent access).
+   - In-memory FinOps audit ledger tracking cumulative waste analyzed, savings proposed, 
+     and per-resource breakdowns with thread-safe reset.
+2. Model Context Protocol (MCP) JSON-RPC 2.0 Gateway:
+   - `handle_mcp_message`: Async handler supporting `initialize`, `tools/list`, and `tools/call`.
+   - MCP Tools: `analyze_infrastructure_waste`, `generate_remediation_plan`, and `get_finops_audit_summary`.
+   - Comprehensive error handling returning standardized JSON-RPC error codes."
+
+
+================================================================================
+PHASE 5: INTEGRATION & UNIT TEST SUITE (tests/test_arbiter.py)
+--------------------------------------------------------------------------------
+Prompt:
+"Develop a comprehensive, 21-test pytest test suite in `tests/test_arbiter.py` validating:
+1. Ingestion of multi-dimensional telemetry across EC2, RDS, and S3 with field boundary validation.
+2. Safety Guardrails enforcing mandatory system mitigations for risk scores >= 3.
+3. Deterministic heuristic engine evaluation and risk threshold filtering.
+4. Upstream AI reasoning happy-path and graceful fallback on 503/network failure.
+5. In-memory audit ledger accumulation and reset capabilities.
+6. Full Model Context Protocol (MCP) JSON-RPC 2.0 protocol lifecycle (initialize, tools/list, 
+   tools/call for all tools, and unknown tool handling).
+Ensure 100% test coverage and strict asynchronous execution under pytest-asyncio."
+
