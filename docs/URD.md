@@ -1,54 +1,81 @@
 # User Requirements Document (URD)
-## Project: Gemini Autonomous Cloud-Cost Arbiter (`gemini-cost-arbiter-mcp`)
+
+**Project:** Gemini Autonomous Cloud-Cost Arbiter (`gemini-cost-arbiter-mcp`)  
+**Version:** 1.2.0  
+**Status:** Approved / Tier-1 Enterprise Production Grade Hardened  
+**Audience:** FinOps Stakeholders, Cloud Platform SREs, AI Agent Engineers  
 
 ---
 
 ### 1. Executive Summary & System Objective
-The **Gemini Autonomous Cloud-Cost Arbiter (`gemini-cost-arbiter-mcp`)** is an automated, asynchronous FinOps intelligence engine. It continuously ingests multi-dimensional cloud utilization telemetry across AWS enterprise infrastructure (EC2, RDS, and S3), identifies systemic compute, memory, and storage waste, and leverages **Google Gemini 3.8 Flash High** reasoning to synthesize deterministic, schema-validated remediation execution payloads for Model Context Protocol (MCP) clients and downstream infrastructure-as-code automation.
+The **Gemini Autonomous Cloud-Cost Arbiter (`gemini-cost-arbiter-mcp`)** is an automated, asynchronous FinOps intelligence engine. It continuously ingests multi-dimensional cloud utilization telemetry across AWS enterprise infrastructure (**EC2 compute, RDS databases, S3 object storage, detached EBS block storage, and unassociated Elastic IPs**), identifies systemic compute, memory, and storage waste, and leverages **Google Gemini 3.8 Flash High** reasoning (with configurable thinking budgets and multi-model secondary fallback) to synthesize deterministic, schema-validated remediation execution payloads for Model Context Protocol (MCP) clients and downstream infrastructure-as-code automation.
 
 ---
 
 ### 2. User & System Personas
-* **FinOps Infrastructure Lead:** Needs automated identification of zombie and underutilized resources with exact dollar waste calculations and monthly savings projections.
-* **Cloud Platform SRE:** Requires deterministic, schema-governed execution payloads that adhere to strict safety guardrails without manual spreadsheet triage.
-* **Autonomous LLM Agents / MCP Clients:** Require standardized tool schemas to inspect cloud waste, query cost-arbitration decisions, and trigger validated remediation actions over standard JSON-RPC 2.0 transports.
+* **FinOps Infrastructure Lead:** Needs automated identification of zombie and underutilized resources across compute, database, and storage assets with exact dollar waste calculations, cumulative ROI tracking, and monthly savings projections.
+* **Cloud Platform SRE:** Requires deterministic, schema-governed execution payloads that adhere to strict safety guardrails without manual spreadsheet triage, complete with automated pre-change snapshots, rollback scripts, and least-privilege AWS IAM policies.
+* **Autonomous LLM Agents / MCP Clients:** Require standardized tool schemas to inspect cloud waste, query cost-arbitration decisions, trigger validated remediation plans, access standardized runbooks, and read live resources over standard JSON-RPC 2.0 transports (`stdio` and `SSE`).
 
 ---
 
 ### 3. Functional Requirements (FR)
 
 #### FR-1: Multi-Dimensional Telemetry Ingestion
-* **FR-1.1:** The system shall ingest raw telemetry for **AWS EC2** instances, including: `cpu_utilization_avg_pct`, `cpu_utilization_p95_pct`, `memory_utilization_avg_pct`, `network_in_out_mbps`, `current_instance_type`, and `monthly_spend_usd`.
-* **FR-1.2:** The system shall ingest telemetry for **AWS RDS** database instances, including: `cpu_utilization_avg_pct`, `memory_free_bytes`, `storage_allocated_gb`, `storage_used_gb`, `active_connections_avg`, `multi_az`, `current_instance_class`, and `monthly_spend_usd`.
-* **FR-1.3:** The system shall ingest telemetry for **AWS S3** storage buckets, including: `total_storage_gb`, `object_count`, `current_storage_class`, `lifecycle_rules_configured`, `percentage_infrequently_accessed`, and `monthly_spend_usd`.
-* **FR-1.4:** The system shall support both single-resource evaluation and batch telemetry ingestion (`TelemetryBatch`).
+* **FR-1.1 (EC2 Compute):** Ingest raw telemetry for AWS EC2 instances: `cpu_utilization_avg_pct`, `cpu_utilization_p95_pct`, `memory_utilization_avg_pct`, `network_in_out_mbps`, `current_instance_type`, and `monthly_spend_usd`.
+* **FR-1.2 (RDS Databases):** Ingest telemetry for AWS RDS instances: `cpu_utilization_avg_pct`, `memory_free_bytes`, `storage_allocated_gb`, `storage_used_gb`, `active_connections_avg`, `multi_az`, `current_instance_class`, and `monthly_spend_usd`.
+* **FR-1.3 (S3 Storage):** Ingest telemetry for AWS S3 storage buckets: `total_storage_gb`, `object_count`, `current_storage_class`, `lifecycle_rules_configured`, `percentage_infrequently_accessed`, and `monthly_spend_usd`.
+* **FR-1.4 (EBS Block Storage):** Ingest telemetry for AWS EBS volumes: `volume_id`, `volume_size_gb`, `volume_type`, `is_attached`, `days_detached`, `has_snapshot`, and `monthly_spend_usd`.
+* **FR-1.5 (Elastic IP Addresses):** Ingest telemetry for AWS Elastic IPs: `allocation_id`, `public_ip`, `is_associated`, `days_idle`, and `monthly_spend_usd`.
+* **FR-1.6 (Heterogeneous Batch Normalization):** Support both single-resource evaluation and batch telemetry ingestion (`TelemetryBatch`).
 
-#### FR-2: AI Arbiter Reasoner (Gemini 3.8 Flash High)
-* **FR-2.1:** Telemetry must be evaluated directly without human preprocessing, relying on the high-cognitive reasoning capabilities of Gemini 3.8 Flash High to detect subtle patterns of waste (e.g., bursty vs. sustained idle compute, orphaned storage, over-allocated IOPS).
+#### FR-2: AI Arbiter Reasoner (Gemini 3.8 Flash High) & Multi-Model Resilience
+* **FR-2.1:** Telemetry must be evaluated directly without human preprocessing, relying on the high-cognitive reasoning capabilities of Gemini 3.8 Flash High to detect subtle patterns of waste.
 * **FR-2.2:** The reasoner shall apply configurable reasoning thinking budgets (e.g. 1024 to 4096 tokens) to evaluate trade-offs between performance degradation risks, cost optimization, and operational reliability.
 * **FR-2.3:** The engine shall maintain an asynchronous non-blocking connection pool via `httpx.AsyncClient` targeting the Google Gemini API (`generativelanguage.googleapis.com/v1beta`).
+* **FR-2.4:** The system shall support secondary multi-model fallback to OpenRouter (e.g. Qwen 2.5 Coder 32B) when primary Gemini API quotas are exhausted or rate-limited.
+* **FR-2.5 (Hierarchical PromptOps):** System prompts must follow a structured hierarchy: a Tier-0 Master System Prompt (`prompts/master_system_prompt.md`) coupled with 6 domain cognitive modules (`prompts/modules/`).
 
-#### FR-3: Structured Egress Contracts (Pydantic v2)
-* **FR-3.1:** All outputs generated by the AI reasoning model must parse strictly into Pydantic v2 data models (`RemediationPlan`, `RemediationActionItem`, `ArbiterResponse`).
-* **FR-3.2:** Execution payloads must provide machine-readable action parameters (e.g., `target_instance_type`, `target_storage_class`, `snapshot_before_action`, `terraform_action_block`) enabling zero-human-translation execution by Terraform or AWS SDKs.
-* **FR-3.3:** Loose or malformed JSON responses must be trapped and rejected with deterministic validation error messages.
+#### FR-3: Structured Egress Contracts & Zero-Hallucination Guarantees
+* **FR-3.1:** All outputs generated by the AI reasoning model must parse strictly into Pydantic v2 data models (`RemediationPlan`, `RemediationActionItem`, `WasteAnalysisSummary`).
+* **FR-3.2 (Constrained Decoding):** LLM calls must inject `generationConfig.responseSchema = RemediationPlan.model_json_schema()` directly into Gemini API calls to enforce schema compliance at model decoding time.
+* **FR-3.3 (Ground-Truth Catalog):** Target instance types must be verified against an external catalog (`config/instance_mappings.json`).
+* **FR-3.4 (Deterministic Rollbacks & IAM):** Execution payloads must provide machine-readable action parameters (`terraform`, `aws_cli`), automated rollback commands (`rollback`), and least-privilege AWS IAM statements (`iam_policy`). All IAM policies, CLI execution commands, and rollback runbooks must be synthesized deterministically in Python mapped to validated resource types, unconditionally overwriting and stripping any LLM-hallucinated permissions or wildcard `*` resources.
+* **FR-3.5 (Cryptographic HMAC-SHA256 Plan Signing):** The plan must include a SHA-256 integrity hash (`plan_digest`) and an HMAC-SHA256 signature (`plan_signature`) computed over proposed actions with a server secret (`PLAN_SIGNING_SECRET`) to detect downstream tampering.
+* **FR-3.6 (Dry-Run Simulation):** The system must provide a `--dry-run` simulation mode to validate execution payloads without triggering infrastructure changes.
+* **FR-3.7 (Real AWS Pricing Catalog Lookup):** EC2 right-sizing projected savings must be computed from standard AWS On-Demand hourly rate differentials multiplied by 730 hours/month looked up directly from `config/instance_mappings.json`, replacing flat percentage multipliers.
 
 #### FR-4: Safety Guardrails & Risk Scoring (1 to 5)
 * **FR-4.1:** Every proposed remediation action must be classified with a deterministic Safety Risk Score ranging from **1** (lowest operational risk) to **5** (highest operational risk):
-  * **Level 1 (Zero / Negligible Risk):** Reversible, non-disruptive changes (e.g., S3 Intelligent-Tiering, transitioning stale objects to Glacier Flexible Retrieval).
-  * **Level 2 (Low Risk):** Storage compression, deleting detached EBS volumes unattached for > 30 days with verified snapshots.
-  * **Level 3 (Moderate Risk):** Rightsizing non-production compute/RDS instances during scheduled maintenance windows.
-  * **Level 4 (High Risk):** Rightsizing production workloads, modifying provisioned IOPS, or modifying Multi-AZ database topology.
-  * **Level 5 (Critical Risk):** Terminating instances, releasing Elastic IPs, or permanently dropping allocated storage.
-* **FR-4.2:** Any action with a risk score of **3 or higher** MUST include non-empty `system_mitigations` (e.g., mandatory automated pre-action AMI/EBS snapshot, rollback runbook, canary health-check probes).
+  * **Level 1 (Zero / Negligible Risk):** Reversible, non-disruptive changes (S3 Intelligent-Tiering transition, lifecycle rules).
+  * **Level 2 (Low Risk):** Reversible cleanup with verified snapshot presence (delete unattached EBS volumes older than 30 days with snapshot, release idle Elastic IP).
+  * **Level 3 (Moderate Risk):** Modifying compute/database state on non-production tiers (Dev/Staging EC2 downsizing, Dev RDS stop, EBS delete without snapshot).
+  * **Level 4 (High Risk):** Modifying production compute (Prod EC2 downsizing, RDS instance class change).
+  * **Level 5 (Critical Risk):** Permanent termination or irreversible data drop (terminating instances, deleting RDS database instances).
+* **FR-4.2 (Mandatory Mitigations):** Any action with a risk score of **3 or higher** MUST include non-empty `system_mitigations` (automated pre-action AMI/EBS snapshot, rollback runbook, maintenance window scheduling).
 * **FR-4.3:** The system must provide a `max_acceptable_risk` threshold filter to prune or flag actions that exceed the client's current risk policy.
+* **FR-4.4 (Quarantine Pattern):** If an action has Risk $\ge 3$ and the AI reasoner omitted mandatory mitigations, the guardrail engine must flag the action as `quarantined=True` with a clear explanation, rather than silently auto-injecting generic templates.
+* **FR-4.5 (EC2 Memory Floor & Pricing Model Guardrails):** EC2 instances with average memory utilization > 65% are disqualified from downsizing to prevent Out-Of-Memory (OOM) crashes. Instances covered by Reserved Instance (RI) or Savings Plan commitments are tagged with $0.00 net billing savings.
+* **FR-4.6 (S3 Small-Object Economics Guardrail):** S3 buckets with average object size < 128 KB are disqualified from Intelligent-Tiering to protect customers against net cost increases from the per-object monitoring fee.
 
-#### FR-5: Model Context Protocol (MCP) Integration
-* **FR-5.1:** The system shall expose its capabilities as standard Model Context Protocol (MCP) tools:
+#### FR-5: Model Context Protocol (MCP) Integration & Transports
+* **FR-5.1 (Tools Catalog):** Expose standard MCP tools:
   * `analyze_infrastructure_waste`: Ingests telemetry and returns waste breakdown, projected savings, and candidate remediation opportunities.
   * `generate_remediation_plan`: Generates structured, risk-scored remediation action items with concrete system mitigations and execution payloads.
   * `get_finops_audit_summary`: Returns cumulative cloud waste detected, total projected monthly savings, and breakdown by AWS resource type.
-* **FR-5.2:** MCP communication must adhere to the JSON-RPC 2.0 specification over standard I/O (stdio) transport.
+* **FR-5.2 (Prompts Catalog):** Expose standardized MCP prompts:
+  * `finops_waste_audit_runbook`: Standardized SRE runbook for systematic waste inspection.
+  * `remediation_rollback_procedure`: Emergency rollback execution prompt.
+* **FR-5.3 (Resources Catalog):** Expose live read-only MCP resources:
+  * `finops://audit/ledger`: Real-time cumulative audit metrics in JSON format.
+  * `finops://policies/risk-matrix`: Safety scoring rules and mandatory mitigation criteria.
+  * `finops://config/instance-mappings`: Active AWS EC2 rightsizing catalog.
+* **FR-5.4 (Dual Transports):** MCP communication must adhere to JSON-RPC 2.0 over standard I/O (`stdio`) and Server-Sent Events (`SSE`) transports.
+* **FR-5.5 (Timing-Safe Authentication & Fail-Closed Protection):** The SSE transport must enforce constant-time `hmac.compare_digest()` token comparison across Bearer tokens, `X-API-Key` headers, and query parameters (`?apiKey=`), and must fail closed (HTTP 401 Unauthorized) when deployed in production mode (`ENVIRONMENT=production` or `REQUIRE_AUTH=true`) without an API key configured.
+
+#### FR-6: Stateful Audit Ledger & Persistence
+* **FR-6.1:** Maintain cumulative metrics across active execution batches: total batches processed, total resources audited, cumulative dollar waste discovered, and net savings projected.
+* **FR-6.2 (SQLite Persistence):** Support persistent storage via `--db-path`, allowing the ledger state to survive application restarts.
 
 ---
 
@@ -56,11 +83,13 @@ The **Gemini Autonomous Cloud-Cost Arbiter (`gemini-cost-arbiter-mcp`)** is an a
 
 | Constraint ID | Category | Requirement Specification |
 |:---|:---|:---|
-| **NFR-1** | Runtime & Language | Python 3.13+ (fully operational on Python 3.14). All execution paths must be native asynchronous (`asyncio`). |
-| **NFR-2** | Zero Boilerplate | Strict Antigravity engineering paradigms: eliminate excessive framework boilerplate, enforce 100% type annotations, and maintain self-contained modules. |
-| **NFR-3** | Context Budget | Token-efficient prompt engineering designed to operate cleanly within a tight 100k token footprint. |
-| **NFR-4** | Determinism & Robustness | Deterministic heuristic fallback engine that guarantees structured remediation proposals even during upstream LLM outages or rate limits. |
-| **NFR-5** | Testing Integrity | 100% automated test coverage across schema boundaries, mathematical waste calculations, risk score validation, and mocked asynchronous network boundaries via `pytest` and `respx`. |
+| **NFR-1** | Runtime & Language | Python 3.13+ (operational on Python 3.14). Native asynchronous execution via `asyncio`. |
+| **NFR-2** | Zero Boilerplate | Strict Antigravity engineering paradigms: eliminate excessive framework boilerplate, enforce 100% type annotations. |
+| **NFR-3** | Context Budget | Token-efficient prompt engineering operating cleanly within a tight 100k token footprint (< 4,000 tokens for 50 resources). |
+| **NFR-4** | Determinism & Robustness | Deterministic heuristic fallback engine guaranteeing structured remediation proposals even during upstream LLM outages or rate limits. |
+| **NFR-5** | Testing Integrity | 100% automated test pass rate across 52+ unit, security, and protocol tests (Python 3.13 & 3.14). |
+| **NFR-6** | Packaging & Size | Multi-stage Docker container executing as non-root user (`appuser`, UID 10001) with image content size $\le 100\text{ MB}$ (verified at 65.5 MB). |
+| **NFR-7** | Turnkey Deployment | Turnkey AWS Free Tier blueprints for EC2 (`t3.micro`/`t4g.small`) and AWS Lambda Web Adapter serverless containers. |
 
 ---
 
@@ -73,11 +102,11 @@ The **Gemini Autonomous Cloud-Cost Arbiter (`gemini-cost-arbiter-mcp`)** is an a
 |   1   | Negligible | Non-disruptive, metadata    | S3 lifecycle policy,      | None required         |
 |       |            | or automated tiering        | Intelligent-Tiering       |                       |
 +-------+------------+-----------------------------+---------------------------+-----------------------+
-|   2   | Low        | Reversible storage cleanup  | Delete stale unattached   | Verify age > 30 days, |
-|       |            | with prior snapshot check   | EBS volume                | verify tag != prod    |
+|   2   | Low        | Reversible cleanup with     | Delete unattached EBS >30d| Verify age > 30 days, |
+|       |            | prior snapshot check        | (with snap), release EIP  | verify tag != prod    |
 +-------+------------+-----------------------------+---------------------------+-----------------------+
 |   3   | Moderate   | Stoppable compute changes   | EC2/RDS right-sizing in   | Pre-change backup,    |
-|       |            | on non-critical tiers       | Dev/Staging environments  | maintenance window    |
+|       |            | on non-critical tiers       | Dev/Staging, EBS no snap  | maintenance window    |
 +-------+------------+-----------------------------+---------------------------+-----------------------+
 |   4   | High       | Production compute resize,  | Production EC2 rightsize, | Automated snapshot,   |
 |       |            | database storage shrink     | RDS instance class change | Canary health check,  |
@@ -92,8 +121,6 @@ The **Gemini Autonomous Cloud-Cost Arbiter (`gemini-cost-arbiter-mcp`)** is an a
 ---
 
 ### 6. Acceptance Criteria
-1. Given raw EC2 telemetry showing 3% average CPU on an `m5.4xlarge` costing \$550/month, the engine proposes rightsizing to `m5.large` or `t4g.xlarge`, calculates savings exceeding \$400/month, assigns safety score 3 (or 4 if production), and supplies automated snapshot mitigations.
-2. Given raw S3 telemetry showing 100TB Standard S3 with 92% infrequently accessed data and no lifecycle rules, the engine proposes transitioning to `INTELLIGENT_TIERING` or `GLACIER_FLEXIBLE_RETRIEVAL`, assigns safety score 1, and projects >\$1,500/month savings.
-3. Given an invalid risk score (e.g. 0 or 6), Pydantic v2 rejects the model with a `ValidationError`.
-4. MCP clients querying `tools/list` receive full JSON Schema specifications for `analyze_infrastructure_waste`, `generate_remediation_plan`, and `get_finops_audit_summary`.
-
+1. Given raw EC2 telemetry showing 3% average CPU on an `m5.4xlarge` costing $550/month, the engine proposes rightsizing to `m5.xlarge` or `t4g.xlarge`, calculates savings exceeding $400/month, assigns safety score 3 (or 4 if production), and supplies automated snapshot mitigations and rollback plans.
+2. Given unattached EBS volume telemetry older than 30 days, the engine detects orphan waste, synthesizes pre-delete snapshot mitigations, and generates least-privilege IAM statements.
+3. Given unassociated Elastic IP telemetry idle for $\ge 7$ days, the engine proposes releasing the address, calculates $100\%$ savings, and assigns Risk Score 2.

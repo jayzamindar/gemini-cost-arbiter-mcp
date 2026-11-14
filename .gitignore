@@ -1,4 +1,42 @@
+# Python Virtual Environment & Bytecode
 .venv/
-.env
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Distribution, Packaging & Builds
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Environment & Secrets (NEVER COMMIT)
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Testing & Quality
 .pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.ruff_cache/
+.mypy_cache/
+
+# IDE & Editor Artifacts
+.vscode/*
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# External Agent Scaffolding
+.continue/

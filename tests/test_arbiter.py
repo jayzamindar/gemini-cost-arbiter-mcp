@@ -41,6 +41,7 @@ def arbiter_config() -> ArbiterConfig:
         model_name="gemini-3.8-flash-high",
         thinking_budget=2048,
         max_acceptable_risk=5,
+        openrouter_api_key="mock_openrouter_test_key",
     )
 
 

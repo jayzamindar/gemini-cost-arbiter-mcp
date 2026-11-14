@@ -1,0 +1,37 @@
+services:
+  gemini-cost-arbiter-mcp:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    image: gemini-cost-arbiter-mcp:prod
+    container_name: gemini-cost-arbiter-mcp-prod
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../../.env
+    environment:
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+      - DB_PATH=/app/data/finops.db
+    volumes:
+      - ../../data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; import sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').getcode() == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.2"
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

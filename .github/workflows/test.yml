@@ -1,4 +1,4 @@
-name: Continuous Integration Suite
+name: Continuous Integration & Verification Suite
 
 on:
   push:
@@ -9,24 +9,30 @@ on:
 jobs:
   validate-and-test:
     runs-on: ubuntu-latest
-    
+    strategy:
+      matrix:
+        python-version: ['3.13', '3.14']
+
     steps:
     - name: Checkout Source Code Repository
       uses: actions/checkout@v4
 
-    - name: Configure Python 3.13 Runtime
+    - name: Configure Python ${{ matrix.python-version }} Runtime
       uses: actions/setup-python@v5
       with:
-        python-version: '3.13'
+        python-version: ${{ matrix.python-version }}
         cache: 'pip'
 
-    - name: Install Architecture Dependencies
+    - name: Install Architecture Dependencies & Package
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install setuptools
+        pip install -e .
 
-    - name: Execute Full 21-Test Automated Integration Suite
+    - name: Execute Full Automated Test Suite
       env:
         OPENROUTER_API_KEY: "mock_ci_token_bypass"
+        GEMINI_API_KEY: "mock_ci_token_bypass"
       run: |
-        python -m pytest -v tests/test_arbiter.py
+        python -m pytest -v

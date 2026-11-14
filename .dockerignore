@@ -1,0 +1,33 @@
+# Virtual Environments & Caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Git & IDE Artifacts
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+
+# Local Secrets & Data (NEVER BAKE INTO IMAGE)
+.env
+.env.*
+*.db
+*.sqlite3
+data/
+*.pem
+*.key
+
+# Test Files & Temporary Artifacts
+tests/
+Delete_LAter/

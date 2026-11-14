@@ -1,0 +1,38 @@
+services:
+  gemini-cost-arbiter-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gemini-cost-arbiter-mcp:latest
+    container_name: gemini-cost-arbiter-mcp
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-test-gemini-key-placeholder}
+      - GEMINI_BASE_URL=${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-gemini-3.8-flash-high}
+      - THINKING_BUDGET=${THINKING_BUDGET:-2048}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - MAX_ACCEPTABLE_RISK=${MAX_ACCEPTABLE_RISK:-5}
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+      - DB_PATH=/app/data/finops.db
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; import sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').getcode() == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
