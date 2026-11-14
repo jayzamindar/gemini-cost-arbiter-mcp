@@ -22,6 +22,12 @@ build/
 *.pem
 *.key
 
+# Local Databases & Persistent State
+data/
+*.db
+*.sqlite
+*.sqlite3
+
 # Testing & Quality
 .pytest_cache/
 .coverage

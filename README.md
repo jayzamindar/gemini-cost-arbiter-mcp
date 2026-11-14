@@ -197,14 +197,16 @@ gemini-cost-arbiter-mcp/
 │           └── Dockerfile           # Serverless container with AWS Lambda Web Adapter
 ├── docs/
 │   ├── ARCHITECTURE.md              # System Architecture Document (C4 models & sequence flows)
+│   ├── AWS_Deployment_Guide.md      # Turnkey AWS deployment guide (EC2, Lambda, IAM, SSM)
 │   ├── PRD.md                       # Product Requirements Document
+│   ├── Production_Readiness_Report.md # SRE Production Readiness Review (PRR) 8-pillar audit
 │   ├── TRD.md                       # Technical Requirements Document
 │   └── URD.md                       # User Requirements Document
 ├── Dockerfile                       # Multi-stage, non-root, security-hardened container (65.5MB)
 ├── docker-compose.yml               # Local compose stack with persistent SQLite volume
 ├── gemini.md                        # Master AI Agent & Gemini development guide
 ├── PLAN.md                          # Master step-by-step production elevation checklist
-├── Repo_Baseline_AuditReport.md     # 10-dimension forensic baseline audit report (Grade: 98/100)
+├── Repo_Baseline_AuditReport.md     # 10-dimension forensic baseline audit report (Grade: 100/100)
 ├── prompts/
 │   ├── README.md                    # PromptOps catalog & engineering guide
 │   ├── master_system_prompt.md      # Tier-0 Master System Prompt & Global Ontology
@@ -228,7 +230,7 @@ gemini-cost-arbiter-mcp/
 │   ├── ledger/                      # Stateful FinOps audit tracking with SQLite persistence
 │   └── mcp/                         # MCP protocol dispatcher & servers (stdio and SSE)
 ├── app/                             # Zero-breaking-change backward compatibility shims
-└── tests/                           # 49-test verification suite (100% passing)
+└── tests/                           # 55-test verification suite (100% passing)
 ```
 
 ---

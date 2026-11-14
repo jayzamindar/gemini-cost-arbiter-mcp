@@ -38,7 +38,9 @@ gemini-cost-arbiter-mcp/
 │           └── Dockerfile           # Serverless container with AWS Lambda Web Adapter
 ├── docs/
 │   ├── ARCHITECTURE.md              # System Architecture Document (C4 models & sequence flows)
+│   ├── AWS_Deployment_Guide.md      # Turnkey AWS deployment guide (EC2, Lambda, IAM, SSM)
 │   ├── PRD.md                       # Product Requirements Document
+│   ├── Production_Readiness_Report.md # SRE Production Readiness Review (PRR) 8-pillar audit
 │   ├── TRD.md                       # Technical Requirements Document
 │   └── URD.md                       # User Requirements Document
 ├── Dockerfile                       # Multi-stage, non-root, security-hardened container

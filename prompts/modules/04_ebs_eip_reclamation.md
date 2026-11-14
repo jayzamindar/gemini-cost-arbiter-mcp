@@ -2,9 +2,9 @@
 
 ```yaml
 module: ebs_eip_reclamation
-version: 1.0.0
+version: 1.1.0
 asset_coverage: AWS EBS (Elastic Block Store) & AWS EC2 Elastic IPs (EIP)
-action_types: [TERMINATE, RELEASE_ADDRESS]
+action_types: [delete_unattached_volume, release_elastic_ip, TERMINATE]
 ```
 
 ## Cognitive Evaluation Rules
@@ -17,8 +17,8 @@ action_types: [TERMINATE, RELEASE_ADDRESS]
    - If `has_snapshot == True`: Assign **Safety Risk Score 2 (Low)**.
    - If `has_snapshot == False`: Assign **Safety Risk Score 3 (Moderate)** (requires pre-delete snapshot mitigation).
 3. **Savings Quantification:**
-   - Proposed Action: `TERMINATE`.
-   - Projected Savings: **100% of current monthly volume spend**.
+   - Proposed Action: `delete_unattached_volume` (or `TERMINATE`).
+   - Projected Savings: **100% of current monthly volume spend** (`round(monthly_spend_usd, 2)`).
 4. **Mandatory System Mitigations (for Risk >= 3):**
    - `Create pre-deletion EBS snapshot ('snap-pre-delete-{resource_id}')`
    - `Verify volume tag is not tagged with retention:permanent or backup:do-not-delete`
@@ -32,7 +32,7 @@ action_types: [TERMINATE, RELEASE_ADDRESS]
 2. **Safety Risk Calibration:**
    - Assign **Safety Risk Score 2 (Low)**: Releasing an unassociated IP does not impact active traffic.
 3. **Savings Quantification:**
-   - Proposed Action: `RELEASE_ADDRESS` (or `TERMINATE`).
-   - Projected Savings: **100% of idle monthly charge**.
+   - Proposed Action: `release_elastic_ip`.
+   - Projected Savings: **100% of idle monthly charge** (`round(monthly_spend_usd, 2)`).
 4. **Mitigations:**
    - `Verify IP address is not hardcoded in external DNS A records (Route 53 or Cloudflare)`
