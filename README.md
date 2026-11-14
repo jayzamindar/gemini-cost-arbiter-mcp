@@ -1,13 +1,166 @@
 # 🛸 Gemini Autonomous Cloud-Cost Arbiter (`gemini-cost-arbiter-mcp`)
 
-[![Continuous Integration](https://github.com/GoogleCloudPlatform/gemini-cost-arbiter-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/GoogleCloudPlatform/gemini-cost-arbiter-mcp/actions)
+[![Continuous Integration](https://github.com/jayzamindar/gemini-cost-arbiter-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/jayzamindar/gemini-cost-arbiter-mcp/actions)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/downloads/)
 [![Model Context Protocol](https://img.shields.io/badge/MCP-JSON--RPC%202.0-orange.svg)](https://modelcontextprotocol.io/)
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2.10%2B-green.svg)](https://docs.pydantic.dev/)
 [![Docker Image Size](https://img.shields.io/badge/docker-65.5MB-brightgreen.svg)](#-docker-packaging--local-execution)
 [![AWS Free Tier](https://img.shields.io/badge/AWS-100%25%20Free%20Tier-success.svg)](deploy/aws-free-tier/)
+[![Tests Passing](https://img.shields.io/badge/tests-55%2F55%20passing-brightgreen.svg)](#3-run-the-automated-test-suite)
 
 An enterprise-grade FinOps intelligence engine and **Model Context Protocol (MCP)** server. The arbiter continuously ingests multi-dimensional cloud utilization telemetry across AWS enterprise infrastructure (**EC2 compute, RDS databases, S3 storage, detached EBS volumes, and unassociated Elastic IPs**), detects systemic capacity and financial waste, and leverages **Google Gemini 3.8 Flash High** with configurable reasoning thinking budgets (and secondary multi-model fallback) to synthesize deterministic, schema-governed remediation execution payloads.
+
+---
+
+## 💡 Problem & Business Impact
+
+### The Enterprise Cloud FinOps Dilemma
+Modern engineering organizations routinely waste **30% to 55% of their total AWS infrastructure budget** on unmonitored over-provisioning and zombie resources:
+* **Severely Oversized Compute:** Production instances running at `< 5%` average CPU utilization while incurring high 16-core hourly on-demand rates ($500–$2,000+/month per node).
+* **Orphaned Storage & Idle Leaks:** Unattached EBS volumes persisting indefinitely after EC2 termination, unassociated Elastic IPs accumulating hourly AWS idle penalty fees, and terabytes of inactive objects trapped in high-cost S3 Standard storage.
+* **Alert Fatigue & Operational Paralysis:** Existing monitoring tools (CloudWatch, AWS Cost Explorer) flag millions of dollars in potential waste, but SRE teams lack the engineering bandwidth to manually author change requests, verify memory thresholds, and write surgical rollback runbooks.
+
+### The Danger of Unguarded AI Agents
+Delegating infrastructure remediation directly to autonomous AI agents or unconstrained LLMs introduces existential production risks:
+* **Hallucinated IAM Overprivilege:** LLMs frequently hallucinate broad wildcard policies (`"Action": "*", "Resource": "*"`), violating Zero Trust security principles.
+* **Catastrophic Outages (OOM & State Loss):** Naive rightsizing algorithms downsize instances solely based on low CPU, causing immediate Out-Of-Memory (OOM) crashes on memory-intensive caches and database workloads.
+* **Irreversible Termination:** Unguarded models terminate live instances or delete storage without automated pre-change snapshots or canary health probes.
+
+### The Solution: Deterministic Guardrails Meet Deep Cognitive Reasoning
+The **Gemini Autonomous Cloud-Cost Arbiter (`gemini-cost-arbiter-mcp`)** solves this challenge by strictly decoupling AI cognitive analysis from execution authority:
+1. **Gemini 3.8 Flash High with Thinking Budget:** Conducts multi-dimensional telemetry reasoning, balancing workload peaks, IOPS ceilings, and storage lifecycle economics.
+2. **Deterministic Python Guardrails:** The reasoner never directly touches cloud infrastructure or synthesizes executable privileges. Execution commands (`aws_cli`, `rollback`) and least-privilege IAM statements are deterministically compiled in Python, strictly eliminating wildcard permissions.
+3. **Calibrated Safety Risk Scoring (1–5) & Quarantine:** High-risk actions ($\ge 3$) strictly require automated pre-change snapshots and rollback procedures. If mitigations are absent, the action is automatically quarantined (`quarantined=True`) pending human SRE sign-off.
+4. **Cryptographic Integrity:** Every generated remediation plan is sealed with a full-payload HMAC-SHA256 signature (`plan_signature`), preventing tampering in transit across agent networks.
+5. **Zero-Downtime Reliability:** An internal deterministic SRE heuristic engine serves as an automatic offline fallback, ensuring 100% availability even during external LLM outages or API rate limits.
+
+---
+
+## 🏗️ System Architecture Flow
+
+```text
+  AWS Infrastructure Telemetry
+  (EC2 Compute, RDS Databases, S3 Storage, Orphan EBS, Idle EIPs)
+                       │
+                       ▼
+  ┌─────────────────────────────────────────┐
+  │       Prompt Injection Sanitizer        │  ◄── Strips regex injection attacks & prompt leaks
+  └────────────────────┬────────────────────┘
+                       │
+                       ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                   Dual-Engine Reasoning Core                    │
+  │  ┌───────────────────────────┐      ┌────────────────────────┐  │
+  │  │   Gemini 3.8 Flash High   │ ───► │  OpenRouter Fallback   │  │
+  │  │   (Thinking Budget: 2048) │ 429  │  (Qwen 2.5 Coder 32B)  │  │
+  │  └─────────────┬─────────────┘      └────────────┬───────────┘  │
+  │                │                                 │              │
+  │                └────────────────┬────────────────┘              │
+  │                                 ▼ API Outage / Rate Limit       │
+  │                  ┌─────────────────────────────┐                │
+  │                  │  Deterministic SRE Engine   │                │
+  │                  │  (100% Offline Rule Sets)   │                │
+  │                  └──────────────┬──────────────┘                │
+  └─────────────────────────────────┼───────────────────────────────┘
+                                    │ Structured Pydantic Output
+                                    ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                Deterministic Security Guardrails                │
+  │  • Real AWS Pricing Catalog Differential: (Rate * 730 hrs)      │
+  │  • FinOps Memory Floor Protection: RAM > 65% aborts downsize    │
+  │  • S3 Intelligent-Tiering Floor: Objects < 128 KB excluded      │
+  │  • Least-Privilege IAM Policy Synthesis: Zero wildcard '*'      │
+  │  • Deterministic AWS CLI & Automated Rollback Script Gen        │
+  │  • Calibrated Safety Scoring (1-5) & Quarantine Gate (>= 3)     │
+  │  • Cryptographic HMAC-SHA256 Canonical Plan Digest & Signature  │
+  └─────────────────────────────────┬───────────────────────────────┘
+                                    │ Sealed Remediation Plan
+                                    ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                        Egress & Transports                      │
+  │  • Model Context Protocol (MCP) stdio Transport (Local Agents)  │
+  │  • Model Context Protocol (MCP) SSE Transport (FastAPI, Docker) │
+  │  • Persistent SQLite FinOps Audit Ledger (Survives Restarts)    │
+  └─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔬 Concrete Example: Telemetry Input ➔ Guardrailed Output
+
+### 1. Ingested Telemetry (AWS CloudWatch Sample)
+An underutilized production `m5.4xlarge` EC2 instance averaging `3.2%` CPU utilization:
+
+```json
+{
+  "instance_id": "i-0a8b9c7d6e5f4a3b2",
+  "instance_type": "m5.4xlarge",
+  "cpu_utilization_avg": 3.2,
+  "cpu_utilization_max": 8.4,
+  "memory_utilization_avg": 28.4,
+  "current_monthly_spend_usd": 560.64,
+  "tags": {
+    "Environment": "Production",
+    "Service": "order-processing",
+    "Owner": "checkout-team"
+  }
+}
+```
+
+### 2. Validated Remediation Output (`RemediationActionItem`)
+The engine reasons over the memory floor (`28.4% < 65%`), looks up standard AWS on-demand rates (`$0.768` ➔ `$0.192`/hr), calculates exact catalog savings (`$420.48/mo`), assigns `safety_risk_score: 4` (Production), mandates system mitigations, and deterministically generates scoped IAM and CLI payloads:
+
+```json
+{
+  "resource_id": "i-0a8b9c7d6e5f4a3b2",
+  "resource_type": "EC2",
+  "action_type": "rightsize_instance",
+  "target_configuration": "m5.xlarge",
+  "current_monthly_spend_usd": 560.64,
+  "projected_monthly_spend_usd": 140.16,
+  "projected_monthly_savings_usd": 420.48,
+  "safety_risk_score": 4,
+  "quarantined": false,
+  "reasoning_rationale": "Sustained CPU average of 3.2% (peak 8.4%) and memory average of 28.4% indicates substantial over-provisioning. Memory floor is well below the 65% safety ceiling. Downsizing to m5.xlarge maintains adequate headroom while reducing compute overhead by 75.0%.",
+  "system_mitigations": [
+    "Create pre-execution AMI backup snapshot",
+    "Execute change during approved off-peak maintenance window",
+    "Execute automated canary health check probe post-resize",
+    "Verify CloudWatch error rate and latency metrics"
+  ],
+  "execution_payload": {
+    "aws_cli": "aws ec2 modify-instance-attribute --instance-id i-0a8b9c7d6e5f4a3b2 --instance-type m5.xlarge",
+    "rollback": {
+      "strategy": "revert_instance_type",
+      "command": "aws ec2 modify-instance-attribute --instance-id i-0a8b9c7d6e5f4a3b2 --instance-type m5.4xlarge"
+    },
+    "iam_policy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "ArbiterRemediationEC2",
+          "Effect": "Allow",
+          "Action": [
+            "ec2:DescribeInstances",
+            "ec2:ModifyInstanceAttribute"
+          ],
+          "Resource": "arn:aws:ec2:*:*:instance/i-0a8b9c7d6e5f4a3b2"
+        }
+      ]
+    }
+  }
+}
+```
+
+### 3. Cryptographic Sealing (`RemediationPlan`)
+Top-level plan fields include canonical HMAC-SHA256 signatures ensuring execution commands cannot be tampered with in transit:
+```json
+{
+  "plan_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "plan_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "plan_signature": "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+}
+```
 
 ---
 
@@ -31,6 +184,82 @@ An enterprise-grade FinOps intelligence engine and **Model Context Protocol (MCP
 
 ---
 
+## 🤖 Multi-Model AI Engineering & Adversarial Verification
+
+To ensure enterprise-grade resilience and eliminate hidden edge-case vulnerabilities, `gemini-cost-arbiter-mcp` was developed and validated using a multi-model engineering and adversarial verification methodology:
+
+### 1. Primary Builder & Reasoning Engine: Google Gemini 3.8 Flash High
+* **Plan & Action Modes:** Formulated system architecture, Pydantic v2 domain schemas, the PromptOps hierarchy, and MCP protocol integration.
+* **Constrained Egress:** Leveraged native Gemini `responseSchema` to guarantee schema compliance directly at token-generation time, preventing malformed JSON responses.
+* **Thinking Budget:** Configured algorithmic reasoning tokens (`thinkingBudget: 2048`) to conduct multi-step trade-off analysis on complex infrastructure telemetry.
+
+### 2. Adversarial Multi-Model Verification Panel
+The system was cross-evaluated across frontier reasoning and code-specialized models (**DeepSeek R1**, **Qwen 2.5 Coder**, **Llama**, and **Cohere North**) to discover edge cases that single-model development overlooks:
+* **Google C++ Protobuf `responseSchema` Allowlist Sanitization:** Discovered that the Gemini REST API compiles schemas into C++ Protobuf descriptors (`google.ai.generativelanguage.v1beta.Schema`), rejecting standard JSON-Schema draft-07 keywords (`minimum`, `maximum`, `$schema`, `title`, and uncollapsed `anyOf` with `null`). Built an explicit allowlist sanitizer in `clean_gemini_schema()` to guarantee zero HTTP 400 Bad Request errors.
+* **AWS IAM ARN Specification Hardening:** Identified invalid shortcut ARNs (e.g. `arn:aws:ec2:*:i-xxx`) and replaced them with standard AWS IAM ARNs (`arn:aws:ec2:*:*:instance/{id}`, `arn:aws:rds:*:*:db:{id}`, `arn:aws:s3:::{id}`).
+* **Full-Payload Cryptographic Sealing:** Audited HMAC signing coverage to ensure the entire canonical plan payload (including `execution_payload`, `system_mitigations`, and top-level totals) is cryptographically signed, preventing command tampering.
+* **Fallback Fence & `<think>` Token Sanitization:** Handled reasoning model fence artifacts (such as DeepSeek `<think>` tokens) in secondary fallback responses to prevent unparsed tokens from entering downstream schema parsers.
+
+---
+
+## 🔌 Plug-and-Play MCP Client Configuration
+
+Connect `gemini-cost-arbiter-mcp` to your favorite MCP client in seconds:
+
+### Claude Desktop (`claude_desktop_config.json`)
+Add the following block to your configuration file (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or `%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+
+```json
+{
+  "mcpServers": {
+    "gemini-cost-arbiter": {
+      "command": "python",
+      "args": [
+        "-m",
+        "gemini_cost_arbiter",
+        "run-mcp",
+        "--transport",
+        "stdio",
+        "--db-path",
+        "./data/finops.db"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "your_gemini_api_key_here",
+        "PLAN_SIGNING_SECRET": "your_secure_signing_secret_here"
+      }
+    }
+  }
+}
+```
+
+### Cursor IDE (`.cursor/mcp.json` or Settings ➔ MCP)
+```json
+{
+  "mcpServers": {
+    "gemini-cost-arbiter": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/gemini-cost-arbiter-mcp",
+        "run",
+        "gemini-cost-arbiter",
+        "run-mcp",
+        "--transport",
+        "stdio",
+        "--db-path",
+        "./data/finops.db"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "your_gemini_api_key_here",
+        "PLAN_SIGNING_SECRET": "your_secure_signing_secret_here"
+      }
+    }
+  }
+}
+```
+
+---
+
 ## 🚀 Quick Start & Installation
 
 ### 1. Prerequisites & Environment Setup
@@ -38,7 +267,7 @@ Verify that your machine has Python 3.13+ installed locally:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/gemini-cost-arbiter-mcp.git
+git clone https://github.com/jayzamindar/gemini-cost-arbiter-mcp.git
 cd gemini-cost-arbiter-mcp
 
 # Initialize virtual environment
@@ -72,10 +301,13 @@ OPENROUTER_API_KEY=your_optional_openrouter_api_key_here
 
 # Persistent SQLite FinOps ledger path
 DB_PATH=./data/finops.db
+
+# Cryptographic Plan Signing Secret
+PLAN_SIGNING_SECRET=your_secure_random_hex_key_here
 ```
 
 ### 3. Run the Automated Test Suite
-Execute the **52-test** verification suite validating schema integrity, contract boundaries, MCP handshakes, CLI runners, security guardrails, SQLite persistence, real AWS pricing rates, deterministic templating, timing-safe fail-closed auth, and fallback loops:
+Execute the **55-test** verification suite validating schema integrity, contract boundaries, MCP handshakes, CLI runners, security guardrails, SQLite persistence, real AWS pricing rates, deterministic templating, timing-safe fail-closed auth, and fallback loops:
 
 ```bash
 python -m pytest -v
