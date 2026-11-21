@@ -61,25 +61,34 @@ def clean_gemini_schema(schema: dict[str, Any]) -> dict[str, Any]:
                 resolved = copy.deepcopy(defs[ref_key])
                 return _inline_refs(resolved, seen_refs | {ref_val})
 
-            # Detect Pydantic v2 Optional pattern: {"anyOf": [{"type": "..."}, {"type": "null"}]}
-            # and collapse to OpenAPI 3.0 {"type": "...", "nullable": True} for Gemini REST API compliance
+            # Detect Pydantic v2 Optional / Union patterns:
+            # - {"anyOf": [{"type": "..."}, {"type": "null"}]} -> {"type": "...", "nullable": True}
+            # - Multi-branch {"anyOf": [{"type": "string"}, {"type": "integer"}, ...]} -> select first non-null branch
             if "anyOf" in node and isinstance(node["anyOf"], list):
                 non_null = [b for b in node["anyOf"] if isinstance(b, dict) and b.get("type") != "null"]
                 has_null = any(isinstance(b, dict) and b.get("type") == "null" for b in node["anyOf"])
-                if has_null and len(non_null) == 1:
+                if non_null:
                     collapsed = _inline_refs(copy.deepcopy(non_null[0]), seen_refs)
-                    if isinstance(collapsed, dict):
+                    if not isinstance(collapsed, dict) or not collapsed:
+                        collapsed = {"type": "string"}
+                    if has_null:
                         collapsed["nullable"] = True
-                        for k, v in node.items():
-                            if k in ALLOWED_GEMINI_FIELDS and k not in (
-                                "anyOf",
-                                "type",
-                                "nullable",
-                                "properties",
-                                "items",
-                            ):
-                                collapsed[k] = v
-                        return collapsed
+                    for k, v in node.items():
+                        if k in ALLOWED_GEMINI_FIELDS and k not in (
+                            "anyOf",
+                            "type",
+                            "nullable",
+                            "properties",
+                            "items",
+                        ):
+                            collapsed[k] = _inline_refs(v, seen_refs)
+                    return collapsed
+                if has_null:
+                    collapsed = {"type": "string", "nullable": True}
+                    for k, v in node.items():
+                        if k in ALLOWED_GEMINI_FIELDS and k not in ("anyOf", "type", "nullable", "properties", "items"):
+                            collapsed[k] = _inline_refs(v, seen_refs)
+                    return collapsed
 
             cleaned: dict[str, Any] = {}
             for k, v in node.items():

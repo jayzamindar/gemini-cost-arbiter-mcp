@@ -332,6 +332,67 @@ def test_clean_gemini_schema_dereferences_defs_and_refs() -> None:
         clean_gemini_schema({"$defs": {"A": {"$ref": "#/$defs/A"}}, "$ref": "#/$defs/A"})
 
 
+def test_clean_gemini_schema_handles_multi_branch_anyof() -> None:
+    """Multi-branch anyOf unions must collapse cleanly without emitting {} and strip unsupported fields."""
+    schema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "MultiBranchTest",
+        "type": "object",
+        "additionalProperties": False,
+        "$defs": {
+            "Detail": {
+                "type": "object",
+                "title": "Detail",
+                "additionalProperties": False,
+                "properties": {
+                    "score": {"type": "integer", "minimum": 1, "maximum": 5, "default": 1},
+                },
+            }
+        },
+        "properties": {
+            "union_field": {
+                "anyOf": [{"type": "string", "default": "abc"}, {"type": "integer", "minimum": 0}],
+                "description": "String or integer",
+            },
+            "nullable_union": {
+                "anyOf": [{"$ref": "#/$defs/Detail"}, {"type": "string"}, {"type": "null"}],
+                "description": "Optional multi-branch",
+            },
+            "null_only": {
+                "anyOf": [{"type": "null"}],
+            },
+        },
+    }
+
+    cleaned = clean_gemini_schema(schema)
+    assert "$schema" not in cleaned
+    assert "title" not in cleaned
+    assert "additionalProperties" not in cleaned
+
+    union_prop = cleaned["properties"]["union_field"]
+    assert union_prop != {}
+    assert "anyOf" not in union_prop
+    assert union_prop["type"] == "string"
+    assert union_prop["description"] == "String or integer"
+    assert "default" not in union_prop
+    assert "minimum" not in union_prop
+
+    nullable_union_prop = cleaned["properties"]["nullable_union"]
+    assert nullable_union_prop != {}
+    assert "anyOf" not in nullable_union_prop
+    assert nullable_union_prop["nullable"] is True
+    assert nullable_union_prop["type"] == "object"
+    assert nullable_union_prop["description"] == "Optional multi-branch"
+    assert "additionalProperties" not in nullable_union_prop
+    score_prop = nullable_union_prop["properties"]["score"]
+    assert "minimum" not in score_prop
+    assert "maximum" not in score_prop
+    assert "default" not in score_prop
+
+    null_only_prop = cleaned["properties"]["null_only"]
+    assert null_only_prop == {"type": "string", "nullable": True}
+
+
 # ==============================================================================
 # 7. Real AWS Pricing Catalog & Deterministic Overwrites & Fail-Closed Auth Tests
 # ==============================================================================

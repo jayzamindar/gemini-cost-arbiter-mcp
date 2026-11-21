@@ -13,10 +13,10 @@
 | Severity | Total Tickets | Ticket IDs | Status | Primary Risk Domains |
 |:---|:---:|:---|:---:|:---|
 | **CRITICAL** | 5 | `REM-003` (`DONE`), `REM-004` (`DONE`), `REM-007` (`DONE`), `REM-012`, `REM-014` | `3 DONE / 2 OPEN` | Mutable/unbounded schemas (`extra="allow"`), CLI/rollback shell interpolation, placeholder signing secrets, missing SSE 10MB body limit (HTTP 413) & predictable session IDs |
-| **HIGH** | 7 | `REM-002` (`DONE`), `REM-005` (`DONE`), `REM-008` (`DONE`), `REM-009`, `REM-011`, `REM-013`, `REM-015` | `3 DONE / 4 OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
-| **MEDIUM** | 3 | `REM-006` (`DONE`), `REM-010`, `REM-016` | `1 DONE / 2 OPEN` | Missing NFKC + `.strip().casefold()` & `prod`/`prd` tag detection, `clean_gemini_schema()` multi-branch `anyOf` drop, `prompts/` omitted from `Dockerfile` |
+| **HIGH** | 7 | `REM-002` (`DONE`), `REM-005` (`DONE`), `REM-008` (`DONE`), `REM-009` (`DONE`), `REM-011`, `REM-013`, `REM-015` | `4 DONE / 3 OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
+| **MEDIUM** | 3 | `REM-006` (`DONE`), `REM-010` (`DONE`), `REM-016` | `2 DONE / 1 OPEN` | Missing NFKC + `.strip().casefold()` & `prod`/`prd` tag detection, `clean_gemini_schema()` multi-branch `anyOf` drop, `prompts/` omitted from `Dockerfile` |
 | **LOW** | 3 | `REM-001` (`DONE`), `REM-017` (`OPEN`), `REM-018` (`DONE`) | `2 DONE / 1 OPEN` | Case-sensitivity (`gemini.md` vs `GEMINI.md`), missing `PROJECT_MAP.md`/`BUILD_PROMPTS.md`, cross-file MCP URI & `modular_prompt.md` drift, multi-cloud docs/deploy standardization |
-| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`9 DONE / 9 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
+| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`11 DONE / 7 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
 
 ---
 
@@ -132,6 +132,7 @@
 ---
 
 ### REM-009: XML Breakout Stripping, Prompt Compression & Path-Safe Prompt Loader
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `HIGH` | Prompt Injection Defense, Context Bloat & Path Traversal
 - **Exact Evidence:** `src/gemini_cost_arbiter/reasoner/prompt_compiler.py:10-64`; `prompts/master_system_prompt.md`; `prompts/modules/*.md`
 - **Root Cause & Security/Reliability Impact:** `sanitize_string()` does not strip `<`/`>` XML breakout tags, and `compile_reasoner_prompt()` neither wraps telemetry in `<untrusted_proposal_data>` delimiters nor compresses defaults (`exclude_none=True, exclude_defaults=True`) or caps `MAX_PROMPT_CHARS`. `SYSTEM_PROMPT` is hardcoded instead of loaded from `prompts/` with `Path.resolve().is_relative_to(prompts_dir.resolve())`.
@@ -144,6 +145,7 @@
 ---
 
 ### REM-010: Harden `clean_gemini_schema()` for Multi-Branch `anyOf` & Align Docs
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `MEDIUM` | OpenAPI 3.0 `responseSchema` Sanitization
 - **Exact Evidence:** `src/gemini_cost_arbiter/reasoner/client.py:66-104`; `gemini.md:219`; `prompts/README.md:41`
 - **Root Cause & Security/Reliability Impact:** Multi-branch `anyOf` (e.g., `Union[str, int]`) fails `len(non_null) == 1` (`client.py:69`) and falls through to lines `84-104`, where `"anyOf"` is dropped by `ALLOWED_GEMINI_FIELDS`, leaving an empty `{}` schema that triggers Gemini HTTP 400.
