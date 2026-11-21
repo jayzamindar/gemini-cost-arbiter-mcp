@@ -54,11 +54,13 @@
 | `tests/test_cli.py` | Click CLI commands (`--version`, `analyze`, `plan`, `audit`) |
 | `tests/test_governance_docs.py` | Governance file presence, `README.md` link integrity, `BUILD_PROMPTS.md` contract checks |
 | `tests/test_guardrails_security.py` | Prompt injection sanitization, IAM scoping, SHA-256 digest, EBS/EIP rules, dry-run |
+| `tests/test_hitl_approval.py` | Risk `5/5` quarantine & signed anti-replay HITL `approve_quarantined_action` gate |
 | `tests/test_mcp_prompts_resources.py` | MCP `prompts/list`, `prompts/get`, `resources/list`, `resources/read` |
+| `tests/test_observability_and_engine.py` | OpenTelemetry `trace_span`, `_coerce_to_batch`, MCP edge branches & stdio loop |
 | `tests/test_openrouter.py` | Secondary OpenRouter fallback on Gemini HTTP 503 |
 | `tests/test_phase9_hardening.py` | SSE auth, HMAC-SHA256 signing, EC2 RAM floor, RI/SP, S3 <128KB, quarantine, `clean_gemini_schema()` |
-| `tests/test_sqlite_ledger.py` | SQLite persistence across restarts |
-| `tests/test_sse.py` | FastAPI SSE `/health` and `/messages` handshake/tools |
+| `tests/test_sqlite_ledger.py` | SQLite WAL concurrency & persistence across restarts |
+| `tests/test_sse.py` | FastAPI SSE `/health`, `/sse` random sessions, `/messages` 413 limit & auth |
 | `tests/test_thinking_budget.py` | Gemini `thinkingConfig.thinkingBudget` payload serialization |
 
 ---

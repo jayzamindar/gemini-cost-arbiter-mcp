@@ -74,7 +74,7 @@ You are operating as a **Principal AI Systems Architect, Lead SRE, and Staff Sec
 5. `docs/ARCHITECTURE.md`, `docs/TRD.md`, `docs/PRD.md`, `docs/URD.md`, `docs/DEPLOYMENT_AWS.md`, `docs/DEPLOYMENT_AZURE.md`, `docs/DEPLOYMENT_GEMINI.md`, `docs/Repo_Baseline_AuditReport.md` (Domain, protocol & deployment specifications)
 6. `prompts/modular_prompt.md` & `prompts/master_system_prompt.md` (PromptOps registry)
 
-- **Master Navigation Hub (`README.md`):** `README.md` MUST maintain clickable relative Markdown links to every governance, specification, audit, deployment, and prompt registry document with zero broken links.
+- **Mandatory Hyperlinked README Navigation Hub Standard:** `README.md` MUST maintain clickable relative Markdown links (`[Label](relative/path)`) to every repository governance doc, architecture/requirements spec, audit report, prompt module (`prompts/modular_prompt.md`, `prompts/master_system_prompt.md`, `prompts/modules/*.md`), deployment guide/asset, and CI/container config (`Dockerfile`, `docker-compose.yml`, `.github/workflows/test.yml`, `pyproject.toml`, `config/instance_mappings.json`) with zero broken links or unlinked doc paths, enforced automatically via `tests/test_governance_docs.py`.
 
 ---
 
@@ -116,7 +116,7 @@ NEXT_ACTION: <Exact next BUILD-PROMPT or verification step>
 
 ## 8. MCP Interface Quick Reference
 
-- **Tools (`tools/list`, `tools/call`):** `analyze_infrastructure_waste`, `generate_remediation_plan`, `get_finops_audit_summary` (plus `approve_quarantined_action` via `REM-013`)
+- **Tools (`tools/list`, `tools/call`):** `analyze_infrastructure_waste`, `generate_remediation_plan`, `get_finops_audit_summary`, `approve_quarantined_action`
 - **Prompts (`prompts/list`, `prompts/get`):** `finops_waste_audit_runbook`, `remediation_rollback_procedure`
 - **Resources (`resources/list`, `resources/read`):** `finops://audit/ledger`, `finops://policies/risk-matrix`, `finops://config/instance-mappings`
 - **CLI:** `gemini-cost-arbiter [run-mcp --transport stdio|sse | analyze -f sample_telemetry.json | plan -f sample_telemetry.json --max-risk 3 --dry-run | audit]`

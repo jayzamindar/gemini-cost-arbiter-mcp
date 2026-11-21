@@ -93,3 +93,10 @@ aws lambda create-function \
 
 > [!WARNING]
 > Lambda `/tmp` is ephemeral across microVMs. For multi-invocation SQLite WAL durability on Lambda, mount **Amazon EFS** at `/mnt/efs` and set `DB_PATH=/mnt/efs/finops.db`.
+
+---
+
+## 5. Runtime & MCP Verification
+
+- Default reasoning model: `DEFAULT_MODEL=gemini-3.8-flash-high` with `clean_gemini_schema()` Protobuf sanitization.
+- Smoke-test locally with `gemini-cost-arbiter analyze -f sample_telemetry.json` and inspect MCP resources (`finops://audit/ledger`, `finops://policies/risk-matrix`, `finops://config/instance-mappings`).

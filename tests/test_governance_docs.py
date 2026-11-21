@@ -114,3 +114,100 @@ def test_deployment_docs_and_packages_valid() -> None:
         yaml_text = (REPO_ROOT / yaml_rel).read_text(encoding="utf-8")
         assert yaml_text.strip(), f"Empty YAML manifest: {yaml_rel}"
         assert "\t" not in yaml_text, f"Tab indentation found in YAML manifest: {yaml_rel}"
+
+
+async def test_mcp_resource_uris_and_prompts_registry_synced(tmp_path: Path) -> None:
+    """Assert 100% MCP finops:// URI parity and prompts/modular_prompt.md registry coverage."""
+    from gemini_cost_arbiter.config import ArbiterConfig
+    from gemini_cost_arbiter.engine import GeminiCostArbiterEngine
+
+    engine = GeminiCostArbiterEngine(
+        config=ArbiterConfig(
+            gemini_api_key="test-key",
+            openrouter_api_key="mock_key",
+            environment="test",
+            db_path=str(tmp_path / "gov_test.db"),
+        )
+    )
+    resp = await engine.handle_mcp_message({"jsonrpc": "2.0", "id": 1, "method": "resources/list", "params": {}})
+    assert resp is not None
+    resources = resp["result"]["resources"]
+    uris = [str(r["uri"]) for r in resources]
+    assert len(uris) >= 3
+    assert all(uri.startswith("finops://") for uri in uris)
+
+    for doc_name in [
+        "GEMINI.md",
+        "README.md",
+        "docs/ARCHITECTURE.md",
+        "docs/DEPLOYMENT_AWS.md",
+        "docs/DEPLOYMENT_AZURE.md",
+        "docs/DEPLOYMENT_GEMINI.md",
+    ]:
+        doc_text = (REPO_ROOT / doc_name).read_text(encoding="utf-8")
+        for uri in uris:
+            assert uri in doc_text, f"MCP resource URI {uri} missing from {doc_name}"
+
+    modular_path = REPO_ROOT / "prompts/modular_prompt.md"
+    assert modular_path.is_file(), "Missing prompts/modular_prompt.md"
+    modular_text = modular_path.read_text(encoding="utf-8")
+    assert "master_system_prompt.md" in modular_text
+    module_files = sorted((REPO_ROOT / "prompts/modules").glob("*.md"))
+    assert len(module_files) == 6
+    for mod in module_files:
+        assert mod.name in modular_text, f"Module {mod.name} missing from prompts/modular_prompt.md"
+
+
+def test_prompt_registry_and_docs_sync_invariants() -> None:
+    """Verify docs reference sample_telemetry.json, clean_gemini_schema(), and DEFAULT_MODEL."""
+    for doc_name in [
+        "GEMINI.md",
+        "README.md",
+        "prompts/README.md",
+        "prompts/modular_prompt.md",
+        "docs/ARCHITECTURE.md",
+        "docs/DEPLOYMENT_AWS.md",
+        "docs/DEPLOYMENT_AZURE.md",
+        "docs/DEPLOYMENT_GEMINI.md",
+    ]:
+        text = (REPO_ROOT / doc_name).read_text(encoding="utf-8")
+        assert "telemetry_sample.json" not in text, f"Stale telemetry_sample.json in {doc_name}"
+        assert "sample_telemetry.json" in text or doc_name.startswith("prompts/"), (
+            f"Missing sample_telemetry.json reference in {doc_name}"
+        )
+        assert "clean_gemini_schema()" in text, f"Missing clean_gemini_schema() in {doc_name}"
+        assert "DEFAULT_MODEL" in text, f"Missing DEFAULT_MODEL in {doc_name}"
+
+    arch_text = (REPO_ROOT / "docs/ARCHITECTURE.md").read_text(encoding="utf-8")
+    assert "52 unit" not in arch_text
+    readme_text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "55-test" not in readme_text
+    assert "55%2F55" not in readme_text
+
+
+def test_all_markdown_docs_linked_in_readme_and_zero_open_remediations() -> None:
+    """Enforce the Mandatory Hyperlinked README Navigation Hub Standard and 100% DONE remediation log."""
+    readme_text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    linked_targets = {
+        m.split("#", 1)[0].strip().lstrip("./")
+        for m in re.findall(r"\[[^\]]+\]\(([^)]+)\)", readme_text)
+        if not m.startswith(("http://", "https://", "#", "mailto:"))
+    }
+
+    expected_md_files: list[Path] = []
+    for p in REPO_ROOT.glob("*.md"):
+        if p.name in {"README.md"} or p.name.startswith("External_"):
+            continue
+        expected_md_files.append(p)
+    expected_md_files.extend(sorted((REPO_ROOT / "docs").glob("*.md")))
+    expected_md_files.extend(sorted((REPO_ROOT / "prompts").rglob("*.md")))
+
+    for md_file in expected_md_files:
+        rel_posix = md_file.relative_to(REPO_ROOT).as_posix()
+        assert rel_posix in linked_targets, (
+            f"Markdown document '{rel_posix}' is not linked via clickable [Label]({rel_posix}) in README.md"
+        )
+
+    audit_text = (REPO_ROOT / "AUDIT_REMEDIATION_LOG.md").read_text(encoding="utf-8")
+    assert "18 DONE / 0 OPEN" in audit_text
+    assert "0 OPEN" in audit_text

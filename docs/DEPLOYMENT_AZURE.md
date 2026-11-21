@@ -51,3 +51,10 @@ docker compose -f deploy/azure/docker-compose.azure.yml up -d
 curl -f http://localhost:8000/health
 # Expected: {"status":"healthy","service":"gemini-cost-arbiter-mcp"}
 ```
+
+---
+
+## 3. Runtime & MCP Verification
+
+- Default reasoning model: `DEFAULT_MODEL=gemini-3.8-flash-high` with `clean_gemini_schema()` Protobuf sanitization.
+- Smoke-test locally with `gemini-cost-arbiter analyze -f sample_telemetry.json` and inspect MCP resources (`finops://audit/ledger`, `finops://policies/risk-matrix`, `finops://config/instance-mappings`).

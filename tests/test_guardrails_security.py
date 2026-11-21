@@ -150,11 +150,26 @@ async def test_dry_run_simulation_mode() -> None:
 def test_zero_wildcard_iam_and_cli_injection_blocked() -> None:
     """Verify zero '*' wildcards in IAM policies, shlex/regex CLI hardening, bool risk rejection, and whitespace mitigations."""
     cases = [
-        (CloudResourceType.EC2, ActionType.RIGHTSIZE_INSTANCE, "i-0123456789abcdef0", "arn:aws:ec2:*:*:instance/i-0123456789abcdef0"),
+        (
+            CloudResourceType.EC2,
+            ActionType.RIGHTSIZE_INSTANCE,
+            "i-0123456789abcdef0",
+            "arn:aws:ec2:*:*:instance/i-0123456789abcdef0",
+        ),
         (CloudResourceType.RDS, ActionType.STOP_INSTANCE, "db-prod-01", "arn:aws:rds:*:*:db:db-prod-01"),
         (CloudResourceType.S3, ActionType.TRANSITION_STORAGE_TIER, "my-finops-bucket", "arn:aws:s3:::my-finops-bucket"),
-        (CloudResourceType.EBS, ActionType.DELETE_UNATTACHED_VOLUME, "vol-0abcdef1234567890", "arn:aws:ec2:*:*:volume/vol-0abcdef1234567890"),
-        (CloudResourceType.EIP, ActionType.RELEASE_ELASTIC_IP, "eipalloc-01234567", "arn:aws:ec2:*:*:elastic-ip/eipalloc-01234567"),
+        (
+            CloudResourceType.EBS,
+            ActionType.DELETE_UNATTACHED_VOLUME,
+            "vol-0abcdef1234567890",
+            "arn:aws:ec2:*:*:volume/vol-0abcdef1234567890",
+        ),
+        (
+            CloudResourceType.EIP,
+            ActionType.RELEASE_ELASTIC_IP,
+            "eipalloc-01234567",
+            "arn:aws:ec2:*:*:elastic-ip/eipalloc-01234567",
+        ),
     ]
     for res_type, act_type, res_id, expected_arn in cases:
         enriched = GuardrailEngine.audit_and_enrich_action(
@@ -177,19 +192,47 @@ def test_zero_wildcard_iam_and_cli_injection_blocked() -> None:
 
     # Reject resource_id == "*"
     with pytest.raises(ValueError, match="Invalid resource_id"):
-        GuardrailEngine._generate_iam_policy({"resource_id": "*", "resource_type": CloudResourceType.EIP, "action_type": ActionType.RELEASE_ELASTIC_IP})
+        GuardrailEngine._generate_iam_policy(
+            {"resource_id": "*", "resource_type": CloudResourceType.EIP, "action_type": ActionType.RELEASE_ELASTIC_IP}
+        )
 
     # Reject shell injection in resource_id and target_configuration
     with pytest.raises(ValueError, match="Invalid resource_id"):
-        GuardrailEngine._generate_aws_cli({"resource_id": "i-1; cat /etc/passwd", "resource_type": CloudResourceType.EC2, "action_type": ActionType.STOP_INSTANCE})
+        GuardrailEngine._generate_aws_cli(
+            {
+                "resource_id": "i-1; cat /etc/passwd",
+                "resource_type": CloudResourceType.EC2,
+                "action_type": ActionType.STOP_INSTANCE,
+            }
+        )
     with pytest.raises(ValueError, match="Invalid resource_id"):
-        GuardrailEngine._generate_rollback_plan({"resource_id": "i-1 && rm -rf /", "resource_type": CloudResourceType.EC2, "action_type": ActionType.STOP_INSTANCE})
+        GuardrailEngine._generate_rollback_plan(
+            {
+                "resource_id": "i-1 && rm -rf /",
+                "resource_type": CloudResourceType.EC2,
+                "action_type": ActionType.STOP_INSTANCE,
+            }
+        )
     with pytest.raises(ValueError, match="Invalid target_configuration"):
-        GuardrailEngine._generate_aws_cli({"resource_id": "i-safe", "resource_type": CloudResourceType.EC2, "action_type": ActionType.RIGHTSIZE_INSTANCE, "target_configuration": "t3.small; whoami"})
+        GuardrailEngine._generate_aws_cli(
+            {
+                "resource_id": "i-safe",
+                "resource_type": CloudResourceType.EC2,
+                "action_type": ActionType.RIGHTSIZE_INSTANCE,
+                "target_configuration": "t3.small; whoami",
+            }
+        )
 
     # Reject bool safety_risk_score
     with pytest.raises(ValueError, match="Safety risk score"):
-        GuardrailEngine.audit_and_enrich_action({"resource_id": "i-safe", "resource_type": CloudResourceType.EC2, "action_type": ActionType.STOP_INSTANCE, "safety_risk_score": True})
+        GuardrailEngine.audit_and_enrich_action(
+            {
+                "resource_id": "i-safe",
+                "resource_type": CloudResourceType.EC2,
+                "action_type": ActionType.STOP_INSTANCE,
+                "safety_risk_score": True,
+            }
+        )
 
     # Whitespace-only system_mitigations with score >= 3 must quarantine
     quarantined_action = GuardrailEngine.audit_and_enrich_action(

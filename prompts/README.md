@@ -8,6 +8,7 @@ The **Gemini Autonomous Cloud-Cost Arbiter (`gemini-cost-arbiter-mcp`)** follows
 ```
 prompts/
 ├── README.md                               # PromptOps Catalog & Governance Guide (This file)
+├── modular_prompt.md                       # Unified PromptOps Registry indexing Tier-0 & Modules 01-06
 ├── master_system_prompt.md                 # Tier-0 Master System Prompt & Global Ontology
 ├── code_generation.txt                     # Legacy architectural design prompt history
 └── modules/                                # Specialized FinOps Cognitive Modules
@@ -37,7 +38,7 @@ prompts/
 
 ## 3. Strict Anti-Hallucination Protocol (The 3 Pillars)
 
-To guarantee 100% zero-hallucination compliance across all prompt evaluations:
-1. **Schema-Constrained Decoding:** Prompts are coupled with `generationConfig.responseSchema = RemediationPlan.model_json_schema()`. The LLM's token sampler is constrained by the JSON grammar engine.
-2. **Catalog-Anchored Reality:** The prompt instructs the model to only recommend AWS instance types present in `config/instance_mappings.json`.
-3. **Deterministic Python Arithmetic:** Mathematical calculations (spending, percentage savings, and cost deltas) are validated and reconciled by Python business logic—never blindly trusted to LLM token prediction.
+To guarantee 100% zero-hallucination compliance across all prompt evaluations (`DEFAULT_MODEL=gemini-3.8-flash-high`):
+1. **Schema-Constrained Decoding (`clean_gemini_schema()`):** Prompts are coupled with `generationConfig.responseSchema = clean_gemini_schema(RemediationPlan.model_json_schema())`, which dereferences `$defs`/`$ref`, collapses `anyOf` unions, excludes `execution_payload`, and strips unsupported JSON-Schema keywords for Gemini C++ Protobuf compliance.
+2. **Catalog-Anchored Reality:** The prompt instructs the model to only recommend AWS instance types present in `config/instance_mappings.json` (indexed via [`modular_prompt.md`](modular_prompt.md)).
+3. **Deterministic Python Arithmetic:** Mathematical calculations (spending, percentage savings, and cost deltas) are validated and reconciled by Python business logic (`GuardrailEngine.reconcile_with_telemetry()`)—never blindly trusted to LLM token prediction.

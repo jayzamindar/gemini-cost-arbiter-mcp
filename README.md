@@ -6,7 +6,7 @@
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2.10%2B-green.svg)](https://docs.pydantic.dev/)
 [![Docker Image Size](https://img.shields.io/badge/docker-65.5MB-brightgreen.svg)](#-docker-packaging--local-execution)
 [![AWS Free Tier](https://img.shields.io/badge/AWS-100%25%20Free%20Tier-success.svg)](deploy/aws/)
-[![Tests Passing](https://img.shields.io/badge/tests-55%2F55%20passing-brightgreen.svg)](#3-run-the-automated-test-suite)
+[![Tests Passing](https://img.shields.io/badge/tests-93%2F93%20passing-brightgreen.svg)](#3-run-the-automated-test-suite)
 
 An enterprise-grade FinOps intelligence engine and **Model Context Protocol (MCP)** server. The arbiter continuously ingests multi-dimensional cloud utilization telemetry across AWS enterprise infrastructure (**EC2 compute, RDS databases, S3 storage, detached EBS volumes, and unassociated Elastic IPs**), detects systemic capacity and financial waste, and leverages **Google Gemini 3.8 Flash High** with configurable reasoning thinking budgets (and secondary multi-model fallback) to synthesize deterministic, schema-governed remediation execution payloads.
 
@@ -18,14 +18,15 @@ An enterprise-grade FinOps intelligence engine and **Model Context Protocol (MCP
 |:---|:---|:---|
 | **Constitution & Standards** | [`GEMINI.md`](GEMINI.md) | `[PROJECT_CONFIGURATION]`, 13 invariants, 3-strike breaker, verification gates |
 | **Architecture & Roadmap** | [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) | 10 Architectural Tenets (DoD) & `BUILD-PROMPT-01..10` roadmap |
-| **Forensic Audit** | [`AUDIT_REMEDIATION_LOG.md`](AUDIT_REMEDIATION_LOG.md) | Sequential `REM-001..017` tickets with `file:line` evidence & TDD specs |
+| **Forensic Audit** | [`AUDIT_REMEDIATION_LOG.md`](AUDIT_REMEDIATION_LOG.md) | Sequential `REM-001..018` (`18/18 DONE`) with `file:line` evidence & TDD specs |
 | **Repository Map** | [`PROJECT_MAP.md`](PROJECT_MAP.md) | Complete module, test, prompt, config, and deployment index |
 | **Execution Playbook** | [`BUILD_PROMPTS.md`](BUILD_PROMPTS.md) | Self-contained `BUILD-PROMPT-01..10` prompts with fail-closed commit gates |
 | **System Specifications** | [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`TRD.md`](docs/TRD.md) · [`PRD.md`](docs/PRD.md) · [`URD.md`](docs/URD.md) | C4 diagrams, mathematical formulas, product & user requirements |
 | **Audit & Readiness** | [`Repo_Baseline_AuditReport.md`](docs/Repo_Baseline_AuditReport.md) · [`Production_Readiness_Report.md`](docs/Production_Readiness_Report.md) | 10-dimension baseline audit and 8-pillar SRE PRR |
-| **PromptOps & Config** | [`prompts/README.md`](prompts/README.md) · [`master_system_prompt.md`](prompts/master_system_prompt.md) · [`instance_mappings.json`](config/instance_mappings.json) | Tier-0 system prompt, domain modules, AWS pricing catalog |
-| **Cloud Deployments** | [`DEPLOYMENT_AWS.md`](docs/DEPLOYMENT_AWS.md) · [`DEPLOYMENT_AZURE.md`](docs/DEPLOYMENT_AZURE.md) · [`DEPLOYMENT_GEMINI.md`](docs/DEPLOYMENT_GEMINI.md) | Turnkey AWS, Azure ACA/ACR, and Google Cloud Run / Gemini MCP guides |
-| **Containers & CI/CD** | [`Dockerfile`](Dockerfile) · [`docker-compose.yml`](docker-compose.yml) · [`test.yml`](.github/workflows/test.yml) | Multi-stage non-root container and multi-version CI workflow |
+| **PromptOps & Config** | [`prompts/README.md`](prompts/README.md) · [`modular_prompt.md`](prompts/modular_prompt.md) · [`master_system_prompt.md`](prompts/master_system_prompt.md) · [`instance_mappings.json`](config/instance_mappings.json) · [`sample_telemetry.json`](sample_telemetry.json) | PromptOps registry, Tier-0 system prompt, AWS pricing catalog, sample telemetry |
+| **PromptOps Modules** | [`01_ec2`](prompts/modules/01_ec2_compute_reasoning.md) · [`02_rds`](prompts/modules/02_rds_database_reasoning.md) · [`03_s3`](prompts/modules/03_s3_storage_tiering.md) · [`04_ebs_eip`](prompts/modules/04_ebs_eip_reclamation.md) · [`05_guardrails`](prompts/modules/05_guardrails_rollback_iam.md) · [`06_mcp`](prompts/modules/06_mcp_operational_runbooks.md) | Domain cognitive modules for EC2, RDS, S3, EBS/EIP, Guardrails, and MCP |
+| **Cloud Deployments** | [`DEPLOYMENT_AWS.md`](docs/DEPLOYMENT_AWS.md) · [`DEPLOYMENT_AZURE.md`](docs/DEPLOYMENT_AZURE.md) · [`DEPLOYMENT_GEMINI.md`](docs/DEPLOYMENT_GEMINI.md) · [`deploy/aws/`](deploy/aws/) · [`deploy/azure/`](deploy/azure/) · [`deploy/gemini/`](deploy/gemini/) | Turnkey AWS, Azure ACA/ACR, and Google Cloud Run / Gemini MCP guides & assets |
+| **Containers & CI/CD** | [`Dockerfile`](Dockerfile) · [`docker-compose.yml`](docker-compose.yml) · [`test.yml`](.github/workflows/test.yml) · [`pyproject.toml`](pyproject.toml) · [`requirements.txt`](requirements.txt) · [`.env.example`](.env.example) | Multi-stage non-root container, CI workflow, packaging, and env template |
 
 ---
 
@@ -324,7 +325,7 @@ PLAN_SIGNING_SECRET=your_secure_random_hex_key_here
 ```
 
 ### 3. Run the Automated Test Suite
-Execute the **55-test** verification suite validating schema integrity, contract boundaries, MCP handshakes, CLI runners, security guardrails, SQLite persistence, real AWS pricing rates, deterministic templating, timing-safe fail-closed auth, and fallback loops:
+Execute the **93-test** verification suite (`93.42%` coverage) validating schema integrity, contract boundaries, MCP handshakes, CLI runners, security guardrails, HITL anti-replay approval, SQLite WAL concurrency, real AWS pricing rates, deterministic templating, timing-safe fail-closed auth, and fallback loops:
 
 ```bash
 python -m pytest -v
@@ -347,10 +348,10 @@ gemini-cost-arbiter run-mcp --transport stdio --db-path ./data/finops.db
 gemini-cost-arbiter run-mcp --transport sse --host 0.0.0.0 --port 8000 --db-path ./data/finops.db
 
 # 3. Analyze a telemetry JSON file directly
-gemini-cost-arbiter analyze -f path/to/telemetry.json
+gemini-cost-arbiter analyze -f sample_telemetry.json
 
 # 4. Generate a remediation plan with risk filtering and simulation dry-run
-gemini-cost-arbiter plan -f path/to/telemetry.json --max-risk 3 --dry-run
+gemini-cost-arbiter plan -f sample_telemetry.json --max-risk 3 --dry-run
 
 # 5. Display cumulative FinOps audit ledger metrics
 gemini-cost-arbiter audit --db-path ./data/finops.db
@@ -414,6 +415,7 @@ The server implements standard JSON-RPC 2.0 communication over `stdio` and `SSE`
 | `analyze_infrastructure_waste` | `telemetry: TelemetryBatch` | `WasteAnalysisSummary` | Scans all resources, calculates monthly dollar waste, and identifies top optimization candidates across EC2, RDS, S3, EBS, and EIP. |
 | `generate_remediation_plan` | `telemetry: TelemetryBatch`, `max_acceptable_risk: Optional[int]`, `dry_run: bool` | `RemediationPlan` | Produces an actionable, risk-scored remediation plan complete with execution commands, automated rollbacks, least-privilege IAM policies, and SHA-256 digest. |
 | `get_finops_audit_summary` | None | `FinOpsAuditSummary` | Returns cumulative financial savings, total resources analyzed, and aggregated ledger statistics. |
+| `approve_quarantined_action` | `plan_id`, `resource_id`, `issued_at`, `expires_at`, `nonce`, `signature` | `ApprovalReceipt` | Verifies canonical HMAC-SHA256 HITL approval (`<= 300s` TTL) with anti-replay `nonce` deduplication to release quarantined actions. |
 
 ### 2. Prompts Catalog (`prompts/list`, `prompts/get`)
 * `finops_waste_audit_runbook`: Standardized SRE runbook guiding autonomous agents through structured waste inspection.
@@ -468,6 +470,7 @@ gemini-cost-arbiter-mcp/
 ├── BUILD_PROMPTS.md                 # Deterministic build prompt playbook
 ├── prompts/
 │   ├── README.md                    # PromptOps catalog & engineering guide
+│   ├── modular_prompt.md            # Unified PromptOps registry (Tier-0 + Modules 01-06)
 │   ├── master_system_prompt.md      # Tier-0 Master System Prompt & Global Ontology
 │   ├── code_generation.txt          # Engineering prompt history
 │   └── modules/                     # Specialized FinOps Cognitive Modules
@@ -489,7 +492,7 @@ gemini-cost-arbiter-mcp/
 │   ├── ledger/                      # Stateful FinOps audit tracking with SQLite persistence
 │   └── mcp/                         # MCP protocol dispatcher & servers (stdio and SSE)
 ├── app/                             # Zero-breaking-change backward compatibility shims
-└── tests/                           # 55-test verification suite (100% passing)
+└── tests/                           # 93-test verification suite (100% passing, 93%+ coverage)
 ```
 
 ---

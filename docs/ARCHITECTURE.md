@@ -45,7 +45,9 @@ The **Gemini Autonomous Cloud-Cost Arbiter** bridges cloud infrastructure utiliz
 8. **Persistent Audit State:** Stateful FinOps tracking with in-memory performance backed by durable SQLite storage across process restarts.
 9. **Dual Transport Flexibility:** Support for both standard I/O (`stdio`) for local IDE/desktop agents and Server-Sent Events (`SSE`) for containerized network gateways.
 10. **Turnkey Zero-Cost Packaging:** Multi-stage non-root container (65.5 MB) ready for deployment on AWS Free Tier (`t3.micro`/`t4g.small` or AWS Lambda Serverless Container).
-11. **Rigorous Verification:** 100% automated test pass rate across 52 unit, security, heuristic, and protocol tests.
+11. **Rigorous Verification:** 100% automated test pass rate across 93+ unit, security, heuristic, governance, and protocol tests (smoke-tested against `sample_telemetry.json`).
+12. **Protobuf-Safe Schema Egress (`clean_gemini_schema()`):** `DEFAULT_MODEL` (`gemini-3.8-flash-high`) `responseSchema` payloads are sanitized via `clean_gemini_schema()` to dereference `$defs`/`$ref`, collapse `anyOf`, and strip unsupported JSON-Schema keywords.
+13. **Standardized MCP Resource URIs:** Exposes `finops://audit/ledger`, `finops://policies/risk-matrix`, and `finops://config/instance-mappings` via `resources/list` and `resources/read`.
 
 ---
 
@@ -193,9 +195,10 @@ Designed for multi-tenant, containerized, or remote agent gateways:
 
 ## 5. Hierarchical PromptOps Architecture
 
-Prompts are decoupled into a structured hierarchy under `prompts/`:
-1. **`prompts/master_system_prompt.md`**: Global Tier-0 system prompt defining the SRE Arbiter persona, non-negotiable axioms, calibrated risk scoring, and anti-injection sanitization.
-2. **`prompts/modules/`**:
+Prompts are decoupled into a structured hierarchy under `prompts/` and indexed in `prompts/modular_prompt.md`:
+1. **`prompts/modular_prompt.md`**: Master PromptOps registry indexing Tier-0 and all 6 cognitive modules.
+2. **`prompts/master_system_prompt.md`**: Global Tier-0 system prompt defining the SRE Arbiter persona, non-negotiable axioms, calibrated risk scoring, and anti-injection sanitization.
+3. **`prompts/modules/`**:
    - `01_ec2_compute_reasoning.md`: EC2 underutilization and Graviton modernization.
    - `02_rds_database_reasoning.md`: Zombie databases and Multi-AZ downsizing.
    - `03_s3_storage_tiering.md`: S3 Intelligent-Tiering and Glacier lifecycle transitions.

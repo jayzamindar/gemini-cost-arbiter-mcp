@@ -53,3 +53,6 @@ curl -f "${SERVICE_URL}/health"
 ## 3. Plug-and-Play MCP Client Packaging
 
 Ready-to-copy client configurations for **Antigravity**, **Gemini CLI**, **Claude Desktop**, and **Cursor** (`stdio` and `SSE`) are provided in [`deploy/gemini/mcp_configs.example.json`](../deploy/gemini/mcp_configs.example.json).
+
+- Schema egress uses `clean_gemini_schema()` for Gemini C++ Protobuf `responseSchema` compliance.
+- Registered MCP resources: `finops://audit/ledger`, `finops://policies/risk-matrix`, `finops://config/instance-mappings`.
