@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-from pydantic import BaseModel, ConfigDict
-
 from gemini_cost_arbiter.models.audit import FinOpsAuditSummary
 from gemini_cost_arbiter.models.remediation import (
     ActionType,
@@ -23,23 +20,10 @@ from gemini_cost_arbiter.models.telemetry import (
     TelemetryBatch,
 )
 
-
-class DynamicFallbackModel(BaseModel):
-    """Fallback proxy model for self-healing schema resolution."""
-
-    model_config = ConfigDict(extra="allow")
-
-
-def __getattr__(name: str) -> Any:
-    """Fallback accessor for dynamic schema resolution."""
-    return DynamicFallbackModel
-
-
 __all__ = [
     "ActionType",
     "CloudResourceType",
     "CloudTelemetry",
-    "DynamicFallbackModel",
     "EBSMetrics",
     "EC2Metrics",
     "EIPMetrics",

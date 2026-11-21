@@ -12,11 +12,11 @@
 
 | Severity | Total Tickets | Ticket IDs | Status | Primary Risk Domains |
 |:---|:---:|:---|:---:|:---|
-| **CRITICAL** | 5 | `REM-003`, `REM-004`, `REM-007`, `REM-012`, `REM-014` | `OPEN` | Mutable/unbounded schemas (`extra="allow"`), CLI/rollback shell interpolation, placeholder signing secrets, missing SSE 10MB body limit (HTTP 413) & predictable session IDs |
-| **HIGH** | 7 | `REM-002`, `REM-005`, `REM-008`, `REM-009`, `REM-011`, `REM-013`, `REM-015` | `OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
+| **CRITICAL** | 5 | `REM-003` (`DONE`), `REM-004` (`DONE`), `REM-007`, `REM-012`, `REM-014` | `2 DONE / 3 OPEN` | Mutable/unbounded schemas (`extra="allow"`), CLI/rollback shell interpolation, placeholder signing secrets, missing SSE 10MB body limit (HTTP 413) & predictable session IDs |
+| **HIGH** | 7 | `REM-002` (`DONE`), `REM-005`, `REM-008`, `REM-009`, `REM-011`, `REM-013`, `REM-015` | `1 DONE / 6 OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
 | **MEDIUM** | 3 | `REM-006`, `REM-010`, `REM-016` | `OPEN` | Missing NFKC + `.strip().casefold()` & `prod`/`prd` tag detection, `clean_gemini_schema()` multi-branch `anyOf` drop, `prompts/` omitted from `Dockerfile` |
 | **LOW** | 3 | `REM-001` (`DONE`), `REM-017` (`OPEN`), `REM-018` (`DONE`) | `2 DONE / 1 OPEN` | Case-sensitivity (`gemini.md` vs `GEMINI.md`), missing `PROJECT_MAP.md`/`BUILD_PROMPTS.md`, cross-file MCP URI & `modular_prompt.md` drift, multi-cloud docs/deploy standardization |
-| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`2 DONE / 16 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
+| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`5 DONE / 13 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
 
 ---
 
@@ -36,6 +36,7 @@
 ---
 
 ### REM-002: Enforce CI/CD Quality Gates (`ruff`, `mypy`, `pytest-timeout`, `pytest-cov >= 90%`) & Test Env Isolation
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `HIGH` | CI/CD & Anti-Test-Cheating Harness
 - **Exact Evidence:** `.github/workflows/test.yml:26-38`; `pyproject.toml:48-56,65-83`; `requirements.txt:1-13`; `gemini.md:104` (references missing `tests/conftest.py`)
 - **Root Cause & Security/Reliability Impact:** CI only executes `python -m pytest -v` without `ruff`, `mypy`, `pytest-timeout`, or `pytest-cov` (`--cov-fail-under=90`). `[tool.mypy]` is absent from `pyproject.toml`. Because `tests/conftest.py` does not exist, running `pytest` locally when `.env` contains non-test API keys causes tests instantiating `GeminiCostArbiterEngine()` without args (`tests/test_cli.py`, `tests/test_sse.py`) to attempt live HTTP calls and hang.
@@ -49,6 +50,7 @@
 ---
 
 ### REM-003: Enforce `ConfigDict(extra="forbid", frozen=True)` & Remove `DynamicFallbackModel` Masking
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `CRITICAL` | Pydantic v2 Schema Strictness & Immutability
 - **Exact Evidence:** `src/gemini_cost_arbiter/models/telemetry.py:23,52,73,96,113,127,145`; `src/gemini_cost_arbiter/models/remediation.py:31,78,101`; `src/gemini_cost_arbiter/models/audit.py:11`; `src/gemini_cost_arbiter/models/__init__.py:27-35`; `app/schemas.py:26-28`; `src/gemini_cost_arbiter/config.py:16`; `src/gemini_cost_arbiter/engine.py:181-183`
 - **Root Cause & Security/Reliability Impact:** Every Pydantic model uses `extra="allow"` and mutable instances, allowing unvalidated fields, in-place mutation of signed models (`engine.py:182-183`), and silent env var typos (`config.py:16`). `models/__init__.py:33-35` and `app/schemas.py:26-28` define `__getattr__` returning `DynamicFallbackModel`, masking broken imports.
@@ -62,6 +64,7 @@
 ---
 
 ### REM-004: Bound All Resource IDs, Strings, Collections & Enforce `RemediationPlan` Savings Sum
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `CRITICAL` | Input Validation, DoS Defense & Anti-Hallucination Math
 - **Exact Evidence:** `src/gemini_cost_arbiter/models/telemetry.py:25-37,54-67,75-90,98-107,115-121,131-134,147-151`; `src/gemini_cost_arbiter/models/remediation.py:33-48,75-95`
 - **Root Cause & Security/Reliability Impact:** String fields (`resource_id`, `current_instance_type`, `environment`, `region`, `plan_id`, `reasoning_rationale`), `CloudTelemetry` numeric fields (`monthly_cost_usd`, `cpu_utilization_avg`, `memory_utilization_avg` at `telemetry.py:131-134`), and list/dict fields (`tags`, `ec2_instances`, `actions`, `system_mitigations`) lack length/regex/range bounds. Furthermore, `RemediationPlan` has no `@model_validator(mode="after")` verifying `total_projected_monthly_savings_usd == round(sum(a.projected_monthly_savings_usd for a in self.actions), 2)`.

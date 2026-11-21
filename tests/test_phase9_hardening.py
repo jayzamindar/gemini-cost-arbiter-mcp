@@ -29,10 +29,10 @@ from gemini_cost_arbiter.models.remediation import (
 from gemini_cost_arbiter.models.telemetry import EC2Metrics, RDSMetrics, S3Metrics
 from gemini_cost_arbiter.reasoner.client import clean_gemini_schema
 
-
 # ==============================================================================
 # 1. SSE Transport Authentication Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_sse_auth_health_unauthenticated() -> None:
@@ -82,7 +82,9 @@ async def test_sse_auth_query_parameter_succeeds() -> None:
     """?apiKey=<key> query parameter must successfully authenticate."""
     app = create_sse_app(api_key="prod-secret-key-456")
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        res = await client.post("/messages?apiKey=prod-secret-key-456", json={"jsonrpc": "2.0", "method": "tools/list", "id": 1})
+        res = await client.post(
+            "/messages?apiKey=prod-secret-key-456", json={"jsonrpc": "2.0", "method": "tools/list", "id": 1}
+        )
         assert res.status_code == 200
         assert res.json().get("result") is not None
 
@@ -90,6 +92,7 @@ async def test_sse_auth_query_parameter_succeeds() -> None:
 # ==============================================================================
 # 2. HMAC-SHA256 Cryptographic Plan Signing Tests
 # ==============================================================================
+
 
 def test_hmac_sha256_plan_signing_and_tamper_detection() -> None:
     """HMAC signature must verify authentic plans and reject tampered plans."""
@@ -121,15 +124,18 @@ def test_hmac_sha256_plan_signing_and_tamper_detection() -> None:
     assert signed_plan.plan_signature is not None
     assert GuardrailEngine.verify_plan_signature(signed_plan, secret=secret) is True
 
-    # Tampering attack 1: modifying action spend
+    # Tampering attack 1: modifying action spend and total consistently to bypass sum check
     tampered_dict = signed_plan.model_dump()
     tampered_dict["actions"][0]["projected_monthly_savings_usd"] = 9999.0
+    tampered_dict["total_projected_monthly_savings_usd"] = 9999.0
     tampered_plan = RemediationPlan(**tampered_dict)
     assert GuardrailEngine.verify_plan_signature(tampered_plan, secret=secret) is False
 
     # Tampering attack 2: modifying execution_payload (e.g. injecting malicious CLI command)
     tampered_cli_dict = signed_plan.model_dump()
-    tampered_cli_dict["actions"][0]["execution_payload"]["aws_cli"] = "aws ec2 terminate-instances --instance-ids i-test-123"
+    tampered_cli_dict["actions"][0]["execution_payload"]["aws_cli"] = (
+        "aws ec2 terminate-instances --instance-ids i-test-123"
+    )
     tampered_cli_plan = RemediationPlan(**tampered_cli_dict)
     assert GuardrailEngine.verify_plan_signature(tampered_cli_plan, secret=secret) is False
 
@@ -140,11 +146,12 @@ def test_hmac_sha256_plan_signing_and_tamper_detection() -> None:
 
     # Tampering attack 4: modifying top-level plan totals
     tampered_totals_dict = signed_plan.model_dump()
-    tampered_totals_dict["total_projected_monthly_savings_usd"] = 99999.0
+    tampered_totals_dict["total_current_monthly_spend_usd"] = 99999.0
     assert GuardrailEngine.verify_plan_signature(RemediationPlan(**tampered_totals_dict), secret=secret) is False
 
     # Fail-closed in production when PLAN_SIGNING_SECRET is missing
     import os
+
     orig_env = os.environ.get("ENVIRONMENT")
     orig_secret = os.environ.pop("PLAN_SIGNING_SECRET", None)
     try:
@@ -163,6 +170,7 @@ def test_hmac_sha256_plan_signing_and_tamper_detection() -> None:
 # ==============================================================================
 # 3. EC2 Memory Floor & Pricing Model Tests
 # ==============================================================================
+
 
 def test_ec2_memory_floor_prevents_oom_downsizing() -> None:
     """Chronic low CPU instance must NOT be downsized if RAM utilization > 65%."""
@@ -224,6 +232,7 @@ def test_ec2_and_rds_reserved_instance_pricing_model() -> None:
 # 4. S3 Small-Object Economics Guardrail (<128 KB Floor)
 # ==============================================================================
 
+
 def test_s3_small_object_economics_guardrail() -> None:
     """S3 buckets with average object size < 128 KB must not be transitioned to Intelligent-Tiering."""
     # Bucket with 10 GB across 1,000,000 small log files (avg size = ~10.48 KB < 128 KB)
@@ -255,6 +264,7 @@ def test_s3_small_object_economics_guardrail() -> None:
 # 5. Safety Guardrail Quarantine Pattern
 # ==============================================================================
 
+
 def test_quarantine_pattern_for_unmitigated_high_risk() -> None:
     """Actions with risk >= 3 lacking explicit mitigations must be quarantined, not auto-patched."""
     raw_action = {
@@ -280,6 +290,7 @@ def test_quarantine_pattern_for_unmitigated_high_risk() -> None:
 # ==============================================================================
 # 6. Gemini Schema Dereferencer
 # ==============================================================================
+
 
 def test_clean_gemini_schema_dereferences_defs_and_refs() -> None:
     """Schema flattener must inline $ref, remove $defs and titles for Gemini API compatibility."""
@@ -324,6 +335,7 @@ def test_clean_gemini_schema_dereferences_defs_and_refs() -> None:
 # ==============================================================================
 # 7. Real AWS Pricing Catalog & Deterministic Overwrites & Fail-Closed Auth Tests
 # ==============================================================================
+
 
 def test_ec2_real_aws_pricing_catalog_lookup() -> None:
     """EC2 downsizing must calculate exact dollar savings from hourly rate delta * 730 hrs."""
@@ -380,7 +392,10 @@ def test_deterministic_iam_and_cli_overwrites_llm_hallucinations() -> None:
 
     # Must NOT contain hallucinated CLI command
     assert payload["aws_cli"] != "rm -rf / --no-preserve-root"
-    assert payload["aws_cli"] == "aws ec2 modify-instance-attribute --instance-id i-prod-compute-1 --instance-type m5.xlarge"
+    assert (
+        payload["aws_cli"]
+        == "aws ec2 modify-instance-attribute --instance-id i-prod-compute-1 --instance-type m5.xlarge"
+    )
 
     # Must contain deterministic rollback plan
     assert payload["rollback"]["strategy"] == "revert_instance_type"
@@ -390,75 +405,90 @@ def test_deterministic_iam_and_cli_overwrites_llm_hallucinations() -> None:
 def test_valid_aws_arn_formats_and_scoped_iam_actions() -> None:
     """Validate all 5 AWS resource ARN formats and action scoping in synthesized IAM policies."""
     # 1. EC2 Instance
-    ec2_policy = GuardrailEngine._generate_iam_policy({
-        "resource_type": "EC2",
-        "action_type": "rightsize_instance",
-        "resource_id": "i-0123456789abcdef0",
-    })
+    ec2_policy = GuardrailEngine._generate_iam_policy(
+        {
+            "resource_type": "EC2",
+            "action_type": "rightsize_instance",
+            "resource_id": "i-0123456789abcdef0",
+        }
+    )
     assert ec2_policy["Statement"][0]["Resource"] == "arn:aws:ec2:*:*:instance/i-0123456789abcdef0"
     assert "ec2:ModifyInstanceAttribute" in ec2_policy["Statement"][0]["Action"]
     assert "ec2:StopInstances" not in ec2_policy["Statement"][0]["Action"]
 
     # 1b. EC2 Stop Instance
-    ec2_stop = GuardrailEngine._generate_iam_policy({
-        "resource_type": "EC2",
-        "action_type": "stop_instance",
-        "resource_id": "i-stop-123",
-    })
+    ec2_stop = GuardrailEngine._generate_iam_policy(
+        {
+            "resource_type": "EC2",
+            "action_type": "stop_instance",
+            "resource_id": "i-stop-123",
+        }
+    )
     assert ec2_stop["Statement"][0]["Resource"] == "arn:aws:ec2:*:*:instance/i-stop-123"
     assert "ec2:StopInstances" in ec2_stop["Statement"][0]["Action"]
 
     # 2. EBS Volume
-    ebs_policy = GuardrailEngine._generate_iam_policy({
-        "resource_type": "EBS",
-        "action_type": "delete_unattached_volume",
-        "resource_id": "vol-0abcdef1234567890",
-    })
+    ebs_policy = GuardrailEngine._generate_iam_policy(
+        {
+            "resource_type": "EBS",
+            "action_type": "delete_unattached_volume",
+            "resource_id": "vol-0abcdef1234567890",
+        }
+    )
     assert ebs_policy["Statement"][0]["Resource"] == "arn:aws:ec2:*:*:volume/vol-0abcdef1234567890"
     assert "ec2:DeleteVolume" in ebs_policy["Statement"][0]["Action"]
 
     # 3. Elastic IP
-    eip_policy = GuardrailEngine._generate_iam_policy({
-        "resource_type": "EIP",
-        "action_type": "release_elastic_ip",
-        "resource_id": "eipalloc-01234567",
-    })
+    eip_policy = GuardrailEngine._generate_iam_policy(
+        {
+            "resource_type": "EIP",
+            "action_type": "release_elastic_ip",
+            "resource_id": "eipalloc-01234567",
+        }
+    )
     assert eip_policy["Statement"][0]["Resource"] == "*"
     assert eip_policy["Statement"][0]["Action"] == ["ec2:DescribeAddresses", "ec2:ReleaseAddress"]
 
     # 4. RDS Database
-    rds_policy = GuardrailEngine._generate_iam_policy({
-        "resource_type": "RDS",
-        "action_type": "stop_db_instance",
-        "resource_id": "prod-postgres-db",
-    })
+    rds_policy = GuardrailEngine._generate_iam_policy(
+        {
+            "resource_type": "RDS",
+            "action_type": "stop_db_instance",
+            "resource_id": "prod-postgres-db",
+        }
+    )
     assert rds_policy["Statement"][0]["Resource"] == "arn:aws:rds:*:*:db:prod-postgres-db"
     assert "rds:StopDBInstance" in rds_policy["Statement"][0]["Action"]
 
     # 5. S3 Bucket
-    s3_policy = GuardrailEngine._generate_iam_policy({
-        "resource_type": "S3",
-        "action_type": "transition_storage_tier",
-        "resource_id": "corporate-cold-data",
-    })
+    s3_policy = GuardrailEngine._generate_iam_policy(
+        {
+            "resource_type": "S3",
+            "action_type": "transition_storage_tier",
+            "resource_id": "corporate-cold-data",
+        }
+    )
     assert s3_policy["Statement"][0]["Resource"] == "arn:aws:s3:::corporate-cold-data"
     assert "s3:PutLifecycleConfiguration" in s3_policy["Statement"][0]["Action"]
 
     # 6. Unknown resource type must raise ValueError (fail-closed)
     with pytest.raises(ValueError, match="Unknown or unsupported cloud resource type"):
-        GuardrailEngine._generate_iam_policy({
-            "resource_type": "KUBERNETES_CLUSTER",
-            "action_type": "scale_down",
-            "resource_id": "k8s-prod",
-        })
+        GuardrailEngine._generate_iam_policy(
+            {
+                "resource_type": "KUBERNETES_CLUSTER",
+                "action_type": "scale_down",
+                "resource_id": "k8s-prod",
+            }
+        )
 
 
 @pytest.mark.asyncio
 async def test_openrouter_strips_think_tags_and_markdown_fences() -> None:
     """OpenRouterFallbackClient must strip <think>...</think> reasoning blocks and markdown code fences."""
     import respx
+
     from gemini_cost_arbiter.config import ArbiterConfig
-    from gemini_cost_arbiter.models.telemetry import TelemetryBatch, EC2Metrics
+    from gemini_cost_arbiter.models.telemetry import EC2Metrics, TelemetryBatch
     from gemini_cost_arbiter.reasoner.openrouter import OpenRouterFallbackClient
 
     config = ArbiterConfig(
@@ -495,9 +525,7 @@ async def test_openrouter_strips_think_tags_and_markdown_fences() -> None:
 
     with respx.mock:
         respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
-            return_value=httpx.Response(200, json={
-                "choices": [{"message": {"content": raw_content}}]
-            })
+            return_value=httpx.Response(200, json={"choices": [{"message": {"content": raw_content}}]})
         )
         batch = TelemetryBatch(ec2_instances=[EC2Metrics(resource_id="i-deepseek-test", monthly_spend_usd=150.0)])
         plan = await client.generate_plan(batch)
@@ -510,6 +538,7 @@ async def test_openrouter_strips_think_tags_and_markdown_fences() -> None:
 def test_sse_access_log_filter_redacts_api_key() -> None:
     """SensitiveQueryParamFilter must redact apiKey query parameter values to apiKey=*** in access logs."""
     import logging
+
     from gemini_cost_arbiter.mcp.server_sse import SensitiveQueryParamFilter
 
     filter_instance = SensitiveQueryParamFilter()
@@ -546,4 +575,3 @@ async def test_sse_auth_fail_closed_in_production() -> None:
         res_messages = await client.post("/messages", json={"jsonrpc": "2.0", "method": "tools/list", "id": 1})
         assert res_messages.status_code == 401
         assert "unconfigured in production" in res_messages.text
-

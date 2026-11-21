@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 import sys
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 
 import httpx
 from pydantic import ValidationError
@@ -50,8 +50,8 @@ class GeminiCostArbiterEngine:
 
     def __init__(
         self,
-        config: Optional[ArbiterConfig] = None,
-        http_client: Optional[httpx.AsyncClient] = None,
+        config: ArbiterConfig | None = None,
+        http_client: httpx.AsyncClient | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize engine with runtime configuration and optional HTTP client."""
@@ -73,7 +73,7 @@ class GeminiCostArbiterEngine:
         self.model_name = self.config.model_name
 
     @property
-    def audit_ledger(self) -> List[Dict[str, Any]]:
+    def audit_ledger(self) -> list[dict[str, Any]]:
         """Access audit ledger entries."""
         return self.ledger.entries
 
@@ -109,7 +109,7 @@ class GeminiCostArbiterEngine:
         underutilized_count = len(plan.actions)
         savings_pct = (total_waste / total_spend * 100.0) if total_spend > 0.0 else 0.0
 
-        findings: List[str] = []
+        findings: list[str] = []
         for action in plan.actions:
             findings.append(
                 f"[{action.resource_type.value}] {action.resource_id}: {action.reasoning_rationale} "
@@ -131,8 +131,8 @@ class GeminiCostArbiterEngine:
     async def generate_remediation_plan(
         self,
         telemetry: Any,
-        max_acceptable_risk: Optional[int] = None,
-        risk_filter: Optional[int] = None,
+        max_acceptable_risk: int | None = None,
+        risk_filter: int | None = None,
         dry_run: bool = False,
         **kwargs: Any,
     ) -> RemediationPlan:
@@ -144,7 +144,7 @@ class GeminiCostArbiterEngine:
             else (max_acceptable_risk if max_acceptable_risk is not None else self.config.max_acceptable_risk)
         )
 
-        plan: Optional[RemediationPlan] = None
+        plan: RemediationPlan | None = None
 
         # 1. Attempt Primary Gemini AI Reasoning
         should_try_gemini = self._custom_client is not None or (
@@ -179,8 +179,10 @@ class GeminiCostArbiterEngine:
 
         # If dry-run requested, annotate rationale
         if dry_run:
-            for a in filtered_actions:
-                a.reasoning_rationale = f"[DRY-RUN SIMULATION] {a.reasoning_rationale}"
+            filtered_actions = [
+                a.model_copy(update={"reasoning_rationale": f"[DRY-RUN SIMULATION] {a.reasoning_rationale}"[:2048]})
+                for a in filtered_actions
+            ]
 
         current_spend = batch.total_monthly_spend_usd
         projected_savings = round(sum(a.projected_monthly_savings_usd for a in filtered_actions), 2)
@@ -194,7 +196,7 @@ class GeminiCostArbiterEngine:
 
         raw_plan = RemediationPlan(
             plan_id=str(uuid.uuid4()),
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
             actions=filtered_actions,
             total_current_monthly_spend_usd=current_spend,
             total_projected_monthly_spend_usd=projected_spend,
@@ -221,11 +223,11 @@ class GeminiCostArbiterEngine:
         if isinstance(telemetry, dict):
             return TelemetryBatch.model_validate(telemetry)
         if isinstance(telemetry, list):
-            ec2_list: List[EC2Metrics] = []
-            rds_list: List[RDSMetrics] = []
-            s3_list: List[S3Metrics] = []
-            ebs_list: List[EBSMetrics] = []
-            eip_list: List[EIPMetrics] = []
+            ec2_list: list[EC2Metrics] = []
+            rds_list: list[RDSMetrics] = []
+            s3_list: list[S3Metrics] = []
+            ebs_list: list[EBSMetrics] = []
+            eip_list: list[EIPMetrics] = []
             for item in telemetry:
                 if isinstance(item, CloudTelemetry):
                     if item.resource_type == CloudResourceType.EC2:
@@ -266,7 +268,7 @@ class GeminiCostArbiterEngine:
     # Model Context Protocol (MCP) JSON-RPC 2.0 Dispatcher
     # -------------------------------------------------------------------------
 
-    async def handle_mcp_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def handle_mcp_message(self, message: dict[str, Any]) -> dict[str, Any] | None:
         """Process inbound JSON-RPC 2.0 message according to MCP specification."""
         msg_id = message.get("id")
         method = message.get("method")
@@ -308,7 +310,9 @@ class GeminiCostArbiterEngine:
                             "description": "Ingest multi-dimensional AWS telemetry (EC2, RDS, S3, EBS, EIP) and return quantified cloud waste metrics.",
                             "inputSchema": {
                                 "type": "object",
-                                "properties": {"telemetry": {"type": "object", "description": "TelemetryBatch payload"}},
+                                "properties": {
+                                    "telemetry": {"type": "object", "description": "TelemetryBatch payload"}
+                                },
                                 "required": ["telemetry"],
                             },
                         },
@@ -345,9 +349,7 @@ class GeminiCostArbiterEngine:
                     return {
                         "jsonrpc": "2.0",
                         "id": msg_id,
-                        "result": {
-                            "content": [{"type": "text", "text": summary.model_dump_json(indent=2)}]
-                        },
+                        "result": {"content": [{"type": "text", "text": summary.model_dump_json(indent=2)}]},
                     }
 
                 elif tool_name == "generate_remediation_plan":
@@ -360,9 +362,7 @@ class GeminiCostArbiterEngine:
                     return {
                         "jsonrpc": "2.0",
                         "id": msg_id,
-                        "result": {
-                            "content": [{"type": "text", "text": plan.model_dump_json(indent=2)}]
-                        },
+                        "result": {"content": [{"type": "text", "text": plan.model_dump_json(indent=2)}]},
                     }
 
                 elif tool_name == "get_finops_audit_summary":
@@ -370,9 +370,7 @@ class GeminiCostArbiterEngine:
                     return {
                         "jsonrpc": "2.0",
                         "id": msg_id,
-                        "result": {
-                            "content": [{"type": "text", "text": audit.model_dump_json(indent=2)}]
-                        },
+                        "result": {"content": [{"type": "text", "text": audit.model_dump_json(indent=2)}]},
                     }
 
                 else:
@@ -522,7 +520,7 @@ class GeminiCostArbiterEngine:
             uri = params.get("uri")
 
             if uri == "finops://audit/ledger":
-                summary = self.get_finops_audit_summary()
+                audit_summary = self.get_finops_audit_summary()
                 return {
                     "jsonrpc": "2.0",
                     "id": msg_id,
@@ -531,7 +529,7 @@ class GeminiCostArbiterEngine:
                             {
                                 "uri": uri,
                                 "mimeType": "application/json",
-                                "text": summary.model_dump_json(indent=2),
+                                "text": audit_summary.model_dump_json(indent=2),
                             }
                         ]
                     },

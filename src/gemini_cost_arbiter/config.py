@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,7 +12,8 @@ class ArbiterConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="allow",
+        extra="forbid",
+        populate_by_name=True,
     )
 
     # Google Gemini Configuration
@@ -41,7 +41,7 @@ class ArbiterConfig(BaseSettings):
     )
 
     # Multi-Model Secondary Fallback (OpenRouter)
-    openrouter_api_key: Optional[str] = Field(
+    openrouter_api_key: str | None = Field(
         default=None,
         validation_alias="OPENROUTER_API_KEY",
         description="Optional OpenRouter API token for multi-model fallback.",
@@ -88,7 +88,7 @@ class ArbiterConfig(BaseSettings):
     )
 
     # Persistence Backend
-    db_path: Optional[str] = Field(
+    db_path: str | None = Field(
         default=None,
         validation_alias="DB_PATH",
         description="Optional SQLite database path for persistent audit ledger.",
@@ -115,12 +115,12 @@ class ArbiterConfig(BaseSettings):
         validation_alias="MCP_PORT",
         description="Binding port for SSE transport server.",
     )
-    mcp_api_key: Optional[str] = Field(
+    mcp_api_key: str | None = Field(
         default=None,
         validation_alias="MCP_API_KEY",
         description="Optional API key requirement for SSE endpoints.",
     )
-    plan_signing_secret: Optional[str] = Field(
+    plan_signing_secret: str | None = Field(
         default=None,
         validation_alias="PLAN_SIGNING_SECRET",
         description="Cryptographic secret key used to HMAC-SHA256 sign remediation plans.",
