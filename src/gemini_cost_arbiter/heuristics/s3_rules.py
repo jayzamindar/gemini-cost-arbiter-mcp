@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from gemini_cost_arbiter.heuristics.normalization import normalize_str
 from gemini_cost_arbiter.models.remediation import ActionType, RemediationActionItem
 from gemini_cost_arbiter.models.telemetry import CloudResourceType, S3Metrics
 
@@ -15,7 +16,7 @@ def evaluate_s3_bucket(s3: S3Metrics) -> RemediationActionItem | None:
         if avg_object_size_kb < 128.0:
             return None
 
-    if s3.percentage_infrequently_accessed > 50.0 and s3.current_storage_class.upper() == "STANDARD":
+    if s3.percentage_infrequently_accessed > 50.0 and normalize_str(s3.current_storage_class) == "standard":
         savings = round(s3.monthly_spend_usd * 0.55, 2)
         post_spend = round(s3.monthly_spend_usd - savings, 2)
 

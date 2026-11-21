@@ -11,7 +11,6 @@ import logging
 import sys
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 import httpx
@@ -19,6 +18,7 @@ from pydantic import ValidationError
 
 from gemini_cost_arbiter.config import ArbiterConfig
 from gemini_cost_arbiter.guardrails.risk_scorer import GuardrailEngine
+from gemini_cost_arbiter.heuristics.ec2_rules import CatalogNotFoundError, load_instance_catalog
 from gemini_cost_arbiter.heuristics.engine import DeterministicHeuristicEngine
 from gemini_cost_arbiter.ledger.store import FinOpsLedger
 from gemini_cost_arbiter.models.audit import FinOpsAuditSummary
@@ -558,8 +558,15 @@ class GeminiCostArbiterEngine:
                 }
 
             elif uri == "finops://config/instance-mappings":
-                config_path = Path("config/instance_mappings.json")
-                text_content = config_path.read_text(encoding="utf-8") if config_path.exists() else "{}"
+                try:
+                    catalog_data = load_instance_catalog()
+                    text_content = json.dumps(catalog_data, indent=2)
+                except CatalogNotFoundError as exc:
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": msg_id,
+                        "error": {"code": -32603, "message": str(exc)},
+                    }
                 return {
                     "jsonrpc": "2.0",
                     "id": msg_id,

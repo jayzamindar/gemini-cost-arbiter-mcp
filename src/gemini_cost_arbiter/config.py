@@ -87,11 +87,16 @@ class ArbiterConfig(BaseSettings):
         description="Max risk score eligible for autonomous remediation without human gate.",
     )
 
-    # Persistence Backend
+    # Persistence & Catalog Configuration
     db_path: str | None = Field(
         default=None,
         validation_alias="DB_PATH",
         description="Optional SQLite database path for persistent audit ledger.",
+    )
+    catalog_path: str = Field(
+        default="config/instance_mappings.json",
+        validation_alias="CATALOG_PATH",
+        description="Path to AWS EC2 instance downsize and pricing catalog JSON.",
     )
 
     # MCP Server Configuration

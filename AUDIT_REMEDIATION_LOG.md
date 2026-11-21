@@ -13,10 +13,10 @@
 | Severity | Total Tickets | Ticket IDs | Status | Primary Risk Domains |
 |:---|:---:|:---|:---:|:---|
 | **CRITICAL** | 5 | `REM-003` (`DONE`), `REM-004` (`DONE`), `REM-007`, `REM-012`, `REM-014` | `2 DONE / 3 OPEN` | Mutable/unbounded schemas (`extra="allow"`), CLI/rollback shell interpolation, placeholder signing secrets, missing SSE 10MB body limit (HTTP 413) & predictable session IDs |
-| **HIGH** | 7 | `REM-002` (`DONE`), `REM-005`, `REM-008`, `REM-009`, `REM-011`, `REM-013`, `REM-015` | `1 DONE / 6 OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
-| **MEDIUM** | 3 | `REM-006`, `REM-010`, `REM-016` | `OPEN` | Missing NFKC + `.strip().casefold()` & `prod`/`prd` tag detection, `clean_gemini_schema()` multi-branch `anyOf` drop, `prompts/` omitted from `Dockerfile` |
+| **HIGH** | 7 | `REM-002` (`DONE`), `REM-005` (`DONE`), `REM-008`, `REM-009`, `REM-011`, `REM-013`, `REM-015` | `2 DONE / 5 OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
+| **MEDIUM** | 3 | `REM-006` (`DONE`), `REM-010`, `REM-016` | `1 DONE / 2 OPEN` | Missing NFKC + `.strip().casefold()` & `prod`/`prd` tag detection, `clean_gemini_schema()` multi-branch `anyOf` drop, `prompts/` omitted from `Dockerfile` |
 | **LOW** | 3 | `REM-001` (`DONE`), `REM-017` (`OPEN`), `REM-018` (`DONE`) | `2 DONE / 1 OPEN` | Case-sensitivity (`gemini.md` vs `GEMINI.md`), missing `PROJECT_MAP.md`/`BUILD_PROMPTS.md`, cross-file MCP URI & `modular_prompt.md` drift, multi-cloud docs/deploy standardization |
-| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`5 DONE / 13 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
+| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`7 DONE / 11 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
 
 ---
 
@@ -78,6 +78,7 @@
 ---
 
 ### REM-005: Fail-Closed Catalog Loading (`CatalogNotFoundError`) & Dynamic `CATALOG_PATH` Resolution
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `HIGH` | Deterministic Guardrails & Catalog Integrity
 - **Exact Evidence:** `src/gemini_cost_arbiter/heuristics/ec2_rules.py:49-60,85,120-123`; `src/gemini_cost_arbiter/engine.py:562-564`
 - **Root Cause & Security/Reliability Impact:** `load_instance_catalog()` uses a fragile relative `Path("config/instance_mappings.json")`, swallows all exceptions (`except Exception: pass`), and silently falls back to hardcoded maps. Unknown instance types silently default to `"t4g.xlarge"` (`ec2_rules.py:85`) and a flat `0.65` multiplier (`ec2_rules.py:121`). `engine.py:563` also uses a relative path and returns `"{}"` if missing.
@@ -92,6 +93,7 @@
 ---
 
 ### REM-006: Unicode NFKC + `.strip().casefold()` Normalization & Production Tag Detection
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `MEDIUM` | Deterministic String Evaluation
 - **Exact Evidence:** `src/gemini_cost_arbiter/heuristics/ec2_rules.py:71,81,85,88`; `src/gemini_cost_arbiter/heuristics/rds_rules.py:13,16`; `src/gemini_cost_arbiter/heuristics/ebs_rules.py:13`; `src/gemini_cost_arbiter/heuristics/s3_rules.py:19`; `src/gemini_cost_arbiter/guardrails/risk_scorer.py:63,100,103,128,131,183`
 - **Root Cause & Security/Reliability Impact:** Comparisons use `.lower()`/`.upper()` without Unicode NFKC normalization or `.strip().casefold()`, and only match `"production"`—missing `"prod"`, `"prd"`, and `tags["Environment"]`/`tags["env"]`. Full-width Unicode or whitespace bypasses production risk scoring (`risk=4`) and RI/Savings Plan `$0` billing rules.

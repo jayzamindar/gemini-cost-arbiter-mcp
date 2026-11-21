@@ -14,6 +14,7 @@ import os
 import secrets
 from typing import Any
 
+from gemini_cost_arbiter.heuristics.normalization import PRODUCTION_VALUES, normalize_str
 from gemini_cost_arbiter.models.remediation import RemediationActionItem, RemediationPlan
 
 logger = logging.getLogger("gemini_cost_arbiter.guardrails")
@@ -61,34 +62,34 @@ class GuardrailEngine:
     def _generate_rollback_plan(action_data: dict[str, Any]) -> dict[str, Any]:
         """Synthesize deterministic rollback payload based on resource type and action."""
         raw_type = action_data.get("resource_type", "")
-        res_type = (
-            (raw_type.value if hasattr(raw_type, "value") else str(raw_type)).upper().replace("CLOUDRESOURCETYPE.", "")
+        res_type = normalize_str(raw_type.value if hasattr(raw_type, "value") else str(raw_type)).replace(
+            "cloudresourcetype.", ""
         )
         res_id = action_data.get("resource_id", "res")
 
-        if "EC2" in res_type:
+        if "ec2" in res_type:
             return {
                 "strategy": "revert_instance_type",
                 "command": f"aws ec2 modify-instance-attribute --instance-id {res_id} --instance-type ${{ORIGINAL_INSTANCE_TYPE}}",
                 "health_check_alarm": f"arn:aws:cloudwatch:us-east-1:123456789012:alarm:{res_id}-StatusCheckFailed",
             }
-        elif "RDS" in res_type:
+        elif "rds" in res_type:
             return {
                 "strategy": "restore_from_snapshot",
                 "command": f"aws rds start-db-instance --db-instance-identifier {res_id}",
                 "snapshot_target": f"snapshot-pre-action-{res_id}",
             }
-        elif "S3" in res_type:
+        elif "s3" in res_type:
             return {
                 "strategy": "revert_storage_class",
                 "command": f"aws s3 cp s3://{res_id}/ s3://{res_id}/ --storage-class STANDARD --recursive",
             }
-        elif "EBS" in res_type:
+        elif "ebs" in res_type:
             return {
                 "strategy": "restore_from_snapshot",
                 "command": f"aws ec2 create-volume --snapshot-id snap-pre-delete-{res_id} --availability-zone us-east-1a",
             }
-        elif "EIP" in res_type:
+        elif "eip" in res_type:
             return {
                 "strategy": "allocate_new_eip",
                 "command": "aws ec2 allocate-address --domain vpc",
@@ -100,29 +101,29 @@ class GuardrailEngine:
     def _generate_aws_cli(action_data: dict[str, Any]) -> str:
         """Deterministically generate exact AWS CLI execution command for remediation."""
         raw_type = action_data.get("resource_type", "")
-        res_type = (
-            (raw_type.value if hasattr(raw_type, "value") else str(raw_type)).upper().replace("CLOUDRESOURCETYPE.", "")
+        res_type = normalize_str(raw_type.value if hasattr(raw_type, "value") else str(raw_type)).replace(
+            "cloudresourcetype.", ""
         )
         res_id = action_data.get("resource_id", "res")
         raw_action = action_data.get("action_type", "")
-        action_name = (raw_action.value if hasattr(raw_action, "value") else str(raw_action)).upper()
+        action_name = normalize_str(raw_action.value if hasattr(raw_action, "value") else str(raw_action))
         target_cfg = action_data.get("target_configuration")
 
-        if "EC2" in res_type:
-            if "STOP" in action_name:
+        if "ec2" in res_type:
+            if "stop" in action_name:
                 return f"aws ec2 stop-instances --instance-ids {res_id}"
             target = target_cfg or "t3.medium"
             return f"aws ec2 modify-instance-attribute --instance-id {res_id} --instance-type {target}"
-        elif "RDS" in res_type:
-            if "STOP" in action_name:
+        elif "rds" in res_type:
+            if "stop" in action_name:
                 return f"aws rds stop-db-instance --db-instance-identifier {res_id}"
             target = target_cfg or "db.t3.medium"
             return f"aws rds modify-db-instance --db-instance-identifier {res_id} --db-instance-class {target} --apply-immediately"
-        elif "S3" in res_type:
+        elif "s3" in res_type:
             return f"aws s3api put-bucket-lifecycle-configuration --bucket {res_id} --lifecycle-configuration file://lifecycle.json"
-        elif "EBS" in res_type:
+        elif "ebs" in res_type:
             return f"aws ec2 delete-volume --volume-id {res_id}"
-        elif "EIP" in res_type:
+        elif "eip" in res_type:
             return f"aws ec2 release-address --allocation-id {res_id}"
         return f"aws ec2 describe-instances --instance-ids {res_id}"
 
@@ -130,35 +131,35 @@ class GuardrailEngine:
     def _generate_iam_policy(action_data: dict[str, Any]) -> dict[str, Any]:
         """Generate exact least-privilege AWS IAM statement required for execution and rollback."""
         raw_type = action_data.get("resource_type", "")
-        res_type = (
-            (raw_type.value if hasattr(raw_type, "value") else str(raw_type)).upper().replace("CLOUDRESOURCETYPE.", "")
+        res_type = normalize_str(raw_type.value if hasattr(raw_type, "value") else str(raw_type)).replace(
+            "cloudresourcetype.", ""
         )
         res_id = action_data.get("resource_id", "*")
         raw_action = action_data.get("action_type", "")
-        action_name = (raw_action.value if hasattr(raw_action, "value") else str(raw_action)).upper()
+        action_name = normalize_str(raw_action.value if hasattr(raw_action, "value") else str(raw_action))
 
-        if res_type == "EC2":
+        if res_type == "ec2":
             arn = f"arn:aws:ec2:*:*:instance/{res_id}" if res_id != "*" else "*"
-            if "STOP" in action_name:
+            if "stop" in action_name:
                 allowed_actions = ["ec2:DescribeInstances", "ec2:StopInstances"]
             else:
                 allowed_actions = ["ec2:DescribeInstances", "ec2:ModifyInstanceAttribute"]
-        elif res_type == "EBS":
+        elif res_type == "ebs":
             arn = f"arn:aws:ec2:*:*:volume/{res_id}" if res_id != "*" else "*"
-            if "DELETE" in action_name or "TERMINATE" in action_name:
+            if "delete" in action_name or "terminate" in action_name:
                 allowed_actions = ["ec2:DescribeVolumes", "ec2:DeleteVolume"]
             else:
                 allowed_actions = ["ec2:DescribeVolumes", "ec2:ModifyVolume"]
-        elif res_type == "EIP":
+        elif res_type == "eip":
             arn = "*"
             allowed_actions = ["ec2:DescribeAddresses", "ec2:ReleaseAddress"]
-        elif res_type == "RDS":
+        elif res_type == "rds":
             arn = f"arn:aws:rds:*:*:db:{res_id}" if res_id != "*" else "*"
-            if "STOP" in action_name:
+            if "stop" in action_name:
                 allowed_actions = ["rds:DescribeDBInstances", "rds:StopDBInstance", "rds:StartDBInstance"]
             else:
                 allowed_actions = ["rds:DescribeDBInstances", "rds:ModifyDBInstance"]
-        elif res_type == "S3":
+        elif res_type == "s3":
             arn = f"arn:aws:s3:::{res_id}" if res_id != "*" else "*"
             allowed_actions = ["s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration"]
         else:
@@ -168,7 +169,7 @@ class GuardrailEngine:
             "Version": "2012-10-17",
             "Statement": [
                 {
-                    "Sid": f"FinOpsArbiterExecution{res_type}",
+                    "Sid": f"FinOpsArbiterExecution{res_type.upper()}",
                     "Effect": "Allow",
                     "Action": allowed_actions,
                     "Resource": arn,
@@ -187,7 +188,7 @@ class GuardrailEngine:
         # Keyed HMAC-SHA256 signing with fail-closed production check
         signing_key_str = secret or os.environ.get("PLAN_SIGNING_SECRET")
         if not signing_key_str:
-            if os.environ.get("ENVIRONMENT", "").lower() == "production":
+            if normalize_str(os.environ.get("ENVIRONMENT", "")) in PRODUCTION_VALUES:
                 raise RuntimeError("PLAN_SIGNING_SECRET must be configured in production environment.")
             signing_key_str = _EPHEMERAL_MACHINE_SECRET
 

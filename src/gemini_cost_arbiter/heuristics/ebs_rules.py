@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from gemini_cost_arbiter.heuristics.normalization import is_production_resource
 from gemini_cost_arbiter.models.remediation import ActionType, RemediationActionItem
 from gemini_cost_arbiter.models.telemetry import CloudResourceType, EBSMetrics
 
@@ -9,7 +10,7 @@ from gemini_cost_arbiter.models.telemetry import CloudResourceType, EBSMetrics
 def evaluate_ebs_volume(ebs: EBSMetrics) -> RemediationActionItem | None:
     """Evaluate EBS volume for orphan/detached storage waste."""
     if not ebs.is_attached and ebs.days_unattached >= 30:
-        is_prod = ebs.environment.lower() == "production"
+        is_prod = is_production_resource(ebs.environment, ebs.tags)
         # If it has a verified snapshot, risk is low (2); if no snapshot, moderate (3) requiring snapshot mitigation
         risk = 3 if (not ebs.has_snapshot or is_prod) else 2
         savings = round(ebs.monthly_spend_usd, 2)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from gemini_cost_arbiter.heuristics.normalization import is_production_resource, normalize_str
 from gemini_cost_arbiter.models.remediation import ActionType, RemediationActionItem
 from gemini_cost_arbiter.models.telemetry import CloudResourceType, RDSMetrics
 
@@ -9,15 +10,16 @@ from gemini_cost_arbiter.models.telemetry import CloudResourceType, RDSMetrics
 def evaluate_rds_instance(rds: RDSMetrics) -> RemediationActionItem | None:
     """Evaluate RDS instance for zero-connection idle state."""
     if rds.active_connections_avg == 0.0:
-        is_prod = rds.environment.lower() == "production"
+        is_prod = is_production_resource(rds.environment, rds.tags)
         risk = 5 if is_prod else 3
 
-        is_prepaid = getattr(rds, "pricing_model", "on_demand").lower() in ["reserved", "savings_plan"]
+        pricing_norm = normalize_str(getattr(rds, "pricing_model", "on_demand"))
+        is_prepaid = pricing_norm in {"reserved", "savings_plan"}
         if is_prepaid:
             savings = 0.0
             post_spend = rds.monthly_spend_usd
             rationale_suffix = (
-                f" (NOTE: Database is covered by {rds.pricing_model.upper()} commitment; "
+                f" (NOTE: Database is covered by {pricing_norm.upper()} commitment; "
                 f"stopping instance yields $0.00 in real AWS bill savings until commitment expiration)."
             )
         else:
