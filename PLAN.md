@@ -39,7 +39,7 @@ Every phase in this plan must satisfy the following **Definition of Done (DoD)**
 - [x] **1.2 Clean Environment Template:** Create `.env.example` documenting all configuration keys without secrets.
 - [x] **1.3 Git Security Hygiene:** Overhaul `.gitignore` to prevent committing `.env`, virtualenvs, egg-info, or test caches.
 - [x] **1.4 Remove Stray Scaffolding:** Purge foreign configs (`.continue/`) referencing unrelated models.
-- [x] **1.5 Master Agent Handbook:** Create `gemini.md` in repository root as the single source of truth for Gemini and autonomous agents.
+- [x] **1.5 Master Agent Handbook:** Create `GEMINI.md` in repository root as the single source of truth for Gemini and autonomous agents.
 - [x] **1.6 Editable Installation:** Install package in virtual environment (`pip install -e .`).
 
 ---

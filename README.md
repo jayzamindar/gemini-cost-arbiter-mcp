@@ -12,6 +12,22 @@ An enterprise-grade FinOps intelligence engine and **Model Context Protocol (MCP
 
 ---
 
+## 🧭 Master Navigation Hub
+
+| Category | Document | Purpose |
+|:---|:---|:---|
+| **Constitution & Standards** | [`GEMINI.md`](GEMINI.md) | `[PROJECT_CONFIGURATION]`, 13 invariants, 3-strike breaker, verification gates |
+| **Architecture & Roadmap** | [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) | 10 Architectural Tenets (DoD) & `BUILD-PROMPT-01..10` roadmap |
+| **Forensic Audit** | [`AUDIT_REMEDIATION_LOG.md`](AUDIT_REMEDIATION_LOG.md) | Sequential `REM-001..017` tickets with `file:line` evidence & TDD specs |
+| **Repository Map** | [`PROJECT_MAP.md`](PROJECT_MAP.md) | Complete module, test, prompt, config, and deployment index |
+| **Execution Playbook** | [`BUILD_PROMPTS.md`](BUILD_PROMPTS.md) | Self-contained `BUILD-PROMPT-01..10` prompts with fail-closed commit gates |
+| **System Specifications** | [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`TRD.md`](docs/TRD.md) · [`PRD.md`](docs/PRD.md) · [`URD.md`](docs/URD.md) | C4 diagrams, mathematical formulas, product & user requirements |
+| **Audit & Readiness** | [`PLAN.md`](PLAN.md) · [`Repo_Baseline_AuditReport.md`](Repo_Baseline_AuditReport.md) · [`Production_Readiness_Report.md`](docs/Production_Readiness_Report.md) | Baseline checklist, 10-dimension audit, and 8-pillar SRE PRR |
+| **PromptOps & Config** | [`prompts/README.md`](prompts/README.md) · [`master_system_prompt.md`](prompts/master_system_prompt.md) · [`instance_mappings.json`](config/instance_mappings.json) | Tier-0 system prompt, domain modules, AWS pricing catalog |
+| **Containers & CI/CD** | [`Dockerfile`](Dockerfile) · [`docker-compose.yml`](docker-compose.yml) · [`test.yml`](.github/workflows/test.yml) · [`AWS Deployment Guide`](docs/AWS_Deployment_Guide.md) | Multi-stage non-root container, CI workflow, AWS Free Tier blueprints |
+
+---
+
 ## 💡 Problem & Business Impact
 
 ### The Enterprise Cloud FinOps Dilemma
@@ -436,7 +452,7 @@ gemini-cost-arbiter-mcp/
 │   └── URD.md                       # User Requirements Document
 ├── Dockerfile                       # Multi-stage, non-root, security-hardened container (65.5MB)
 ├── docker-compose.yml               # Local compose stack with persistent SQLite volume
-├── gemini.md                        # Master AI Agent & Gemini development guide
+├── GEMINI.md                        # Master AI Agent & Gemini development guide
 ├── PLAN.md                          # Master step-by-step production elevation checklist
 ├── Repo_Baseline_AuditReport.md     # 10-dimension forensic baseline audit report (Grade: 100/100)
 ├── prompts/
