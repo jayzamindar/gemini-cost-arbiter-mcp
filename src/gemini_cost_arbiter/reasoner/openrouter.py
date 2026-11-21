@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
-import re
+import random
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 
@@ -14,6 +16,7 @@ from gemini_cost_arbiter.config import ArbiterConfig
 from gemini_cost_arbiter.guardrails.risk_scorer import GuardrailEngine
 from gemini_cost_arbiter.models.remediation import RemediationActionItem, RemediationPlan
 from gemini_cost_arbiter.models.telemetry import TelemetryBatch
+from gemini_cost_arbiter.reasoner.circuit_breaker import extract_json
 from gemini_cost_arbiter.reasoner.prompt_compiler import SYSTEM_PROMPT, compile_reasoner_prompt
 
 logger = logging.getLogger("gemini_cost_arbiter.openrouter")
@@ -26,6 +29,7 @@ class OpenRouterFallbackClient:
         self.config = config
         self._custom_client = http_client
         self._internal_client: httpx.AsyncClient | None = None
+        self.last_usage_metadata: dict[str, Any] = {}
 
     async def get_client(self) -> httpx.AsyncClient:
         """Retrieve active HTTP client."""
@@ -33,7 +37,7 @@ class OpenRouterFallbackClient:
             return self._custom_client
         if self._internal_client is None or self._internal_client.is_closed:
             self._internal_client = httpx.AsyncClient(
-                timeout=httpx.Timeout(45.0, connect=10.0),
+                timeout=httpx.Timeout(30.0, connect=10.0),
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {self.config.openrouter_api_key or ''}",
@@ -48,7 +52,7 @@ class OpenRouterFallbackClient:
             self._internal_client = None
 
     async def generate_plan(self, batch: TelemetryBatch) -> RemediationPlan | None:
-        """Dispatch evaluation to OpenRouter OpenAI-compatible endpoint."""
+        """Dispatch evaluation to OpenRouter OpenAI-compatible endpoint with bounded retry."""
         if not self.config.openrouter_api_key:
             return None
 
@@ -65,14 +69,50 @@ class OpenRouterFallbackClient:
                 {"role": "user", "content": f"Telemetry JSON:\n{user_content}"},
             ],
             "temperature": 0.1,
+            "max_tokens": self.config.max_output_tokens,
             "response_format": {"type": "json_object"},
         }
 
-        response = await client.post(url, headers=headers, json=payload)
-        if response.status_code >= 400:
-            raise RuntimeError(f"OpenRouter HTTP {response.status_code}")
+        max_retries = 2
+        backoff_base = 1.0
+        response: httpx.Response | None = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                response = await client.post(url, headers=headers, json=payload)
+                status = getattr(response, "status_code", 200)
+
+                if status in (429, 503) and attempt < max_retries:
+                    jitter = random.uniform(0.1, 0.5)
+                    delay = (backoff_base * (2**attempt)) + jitter
+                    logger.warning(
+                        "Upstream OpenRouter API returned HTTP %s (attempt %s/%s). Retrying in %.2fs...",
+                        status,
+                        attempt + 1,
+                        max_retries,
+                        delay,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                if status >= 400:
+                    raise RuntimeError(f"OpenRouter HTTP {status}")
+                break
+            except (httpx.ConnectError, httpx.TimeoutException) as net_err:
+                if attempt < max_retries:
+                    jitter = random.uniform(0.1, 0.5)
+                    delay = (backoff_base * (2**attempt)) + jitter
+                    await asyncio.sleep(delay)
+                    continue
+                raise net_err
+
+        if response is None:
+            return None
 
         data = response.json()
+        if isinstance(data.get("usage"), dict):
+            self.last_usage_metadata = data["usage"]
+
         choices = data.get("choices", [])
         if not choices:
             return None
@@ -81,14 +121,7 @@ class OpenRouterFallbackClient:
         if not raw_text:
             return None
 
-        # Strip <think>...</think> reasoning blocks (e.g. DeepSeek R1 / Qwen 2.5) and markdown code fences
-        cleaned_text = re.sub(r"<think>.*?</think>", "", raw_text, flags=re.DOTALL).strip()
-        fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned_text)
-        if fence_match:
-            cleaned_text = fence_match.group(1).strip()
-        elif cleaned_text.startswith("```"):
-            cleaned_text = cleaned_text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-
+        cleaned_text = self._extract_json(raw_text)
         parsed = json.loads(cleaned_text)
         actions: list[RemediationActionItem] = []
         raw_actions = parsed.get("actions", []) if isinstance(parsed, dict) else []
@@ -114,3 +147,8 @@ class OpenRouterFallbackClient:
             average_risk_score=avg_risk,
             max_risk_score=max_risk,
         )
+
+    @staticmethod
+    def _extract_json(text: str) -> str:
+        """Strip <think>...</think> blocks and markdown code fences if present."""
+        return extract_json(text)

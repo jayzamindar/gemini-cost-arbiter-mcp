@@ -13,10 +13,10 @@
 | Severity | Total Tickets | Ticket IDs | Status | Primary Risk Domains |
 |:---|:---:|:---|:---:|:---|
 | **CRITICAL** | 5 | `REM-003` (`DONE`), `REM-004` (`DONE`), `REM-007` (`DONE`), `REM-012`, `REM-014` | `3 DONE / 2 OPEN` | Mutable/unbounded schemas (`extra="allow"`), CLI/rollback shell interpolation, placeholder signing secrets, missing SSE 10MB body limit (HTTP 413) & predictable session IDs |
-| **HIGH** | 7 | `REM-002` (`DONE`), `REM-005` (`DONE`), `REM-008` (`DONE`), `REM-009` (`DONE`), `REM-011`, `REM-013`, `REM-015` | `4 DONE / 3 OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
+| **HIGH** | 7 | `REM-002` (`DONE`), `REM-005` (`DONE`), `REM-008` (`DONE`), `REM-009` (`DONE`), `REM-011` (`DONE`), `REM-013`, `REM-015` | `5 DONE / 2 OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
 | **MEDIUM** | 3 | `REM-006` (`DONE`), `REM-010` (`DONE`), `REM-016` | `2 DONE / 1 OPEN` | Missing NFKC + `.strip().casefold()` & `prod`/`prd` tag detection, `clean_gemini_schema()` multi-branch `anyOf` drop, `prompts/` omitted from `Dockerfile` |
 | **LOW** | 3 | `REM-001` (`DONE`), `REM-017` (`OPEN`), `REM-018` (`DONE`) | `2 DONE / 1 OPEN` | Case-sensitivity (`gemini.md` vs `GEMINI.md`), missing `PROJECT_MAP.md`/`BUILD_PROMPTS.md`, cross-file MCP URI & `modular_prompt.md` drift, multi-cloud docs/deploy standardization |
-| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`11 DONE / 7 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
+| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`12 DONE / 6 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
 
 ---
 
@@ -157,6 +157,7 @@
 ---
 
 ### REM-011: Token/Cost & Consecutive-Failure Circuit Breakers, `30s` Timeout, `<think>` Strip & OpenRouter Retries
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `HIGH` | Bounded Self-Healing, Fallback State Machine & Cost Control
 - **Exact Evidence:** `src/gemini_cost_arbiter/reasoner/client.py:128,152,174-220,256-263`; `src/gemini_cost_arbiter/reasoner/openrouter.py:37,51-93`; `src/gemini_cost_arbiter/engine.py:150-175`; `src/gemini_cost_arbiter/config.py:30-58`
 - **Root Cause & Security/Reliability Impact:** `client.py:152` hardcodes `"maxOutputTokens": 16384`; `client.py:128` and `openrouter.py:37` use `45.0s` timeouts; neither client enforces `MAX_SESSION_TOKEN_BUDGET` (`500000`), `DAILY_API_COST_LIMIT_USD` (`$10.00`), or a consecutive-failure cooldown circuit breaker (`3` consecutive errors -> fast-fail to heuristics). `client.py:256-263` lacks `<think>...</think>` stripping, `openrouter.py:72-75` lacks retry+jitter, and `engine.py` does not record `fallback_tier_used` telemetry.

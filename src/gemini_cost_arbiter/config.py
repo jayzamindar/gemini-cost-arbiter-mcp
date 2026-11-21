@@ -39,6 +39,32 @@ class ArbiterConfig(BaseSettings):
         le=8192,
         description="Reasoning thinking budget in tokens for Gemini 3.8 Flash High.",
     )
+    max_output_tokens: int = Field(
+        default=8192,
+        validation_alias="MAX_OUTPUT_TOKENS",
+        ge=256,
+        le=65536,
+        description="Maximum output tokens per LLM completion.",
+    )
+    max_session_token_budget: int = Field(
+        default=500000,
+        validation_alias="MAX_SESSION_TOKEN_BUDGET",
+        ge=1000,
+        description="Maximum cumulative token budget per session before tripping circuit breaker.",
+    )
+    daily_api_cost_limit_usd: float = Field(
+        default=10.0,
+        validation_alias="DAILY_API_COST_LIMIT_USD",
+        ge=0.01,
+        description="Daily UTC API spend ceiling in USD before tripping circuit breaker.",
+    )
+    circuit_breaker_failure_threshold: int = Field(
+        default=3,
+        validation_alias="CIRCUIT_BREAKER_FAILURE_THRESHOLD",
+        ge=1,
+        le=20,
+        description="Consecutive LLM failures required to trip the cooldown circuit breaker.",
+    )
 
     # Multi-Model Secondary Fallback (OpenRouter)
     openrouter_api_key: str | None = Field(

@@ -17,6 +17,7 @@ from gemini_cost_arbiter.config import ArbiterConfig
 from gemini_cost_arbiter.guardrails.risk_scorer import GuardrailEngine
 from gemini_cost_arbiter.models.remediation import RemediationActionItem, RemediationPlan
 from gemini_cost_arbiter.models.telemetry import TelemetryBatch
+from gemini_cost_arbiter.reasoner.circuit_breaker import extract_json
 from gemini_cost_arbiter.reasoner.prompt_compiler import SYSTEM_PROMPT, compile_reasoner_prompt
 
 logger = logging.getLogger("gemini_cost_arbiter.reasoner")
@@ -134,7 +135,7 @@ class GeminiReasonerClient:
             return self._custom_client
         if self._internal_client is None or self._internal_client.is_closed:
             self._internal_client = httpx.AsyncClient(
-                timeout=httpx.Timeout(45.0, connect=10.0),
+                timeout=httpx.Timeout(30.0, connect=10.0),
                 headers={"Content-Type": "application/json"},
             )
         return self._internal_client
@@ -158,7 +159,7 @@ class GeminiReasonerClient:
 
         generation_config: dict[str, Any] = {
             "temperature": 0.1,
-            "maxOutputTokens": 16384,
+            "maxOutputTokens": self.config.max_output_tokens,
             "responseMimeType": "application/json",
             "responseSchema": cleaned_schema,
         }
@@ -201,7 +202,9 @@ class GeminiReasonerClient:
                 break
             except (httpx.ConnectError, httpx.TimeoutException) as net_err:
                 if attempt < max_retries:
-                    await asyncio.sleep(backoff_base * (2**attempt))
+                    jitter = random.uniform(0.1, 0.5)
+                    delay = (backoff_base * (2**attempt)) + jitter
+                    await asyncio.sleep(delay)
                     continue
                 raise net_err
 
@@ -259,10 +262,5 @@ class GeminiReasonerClient:
 
     @staticmethod
     def _extract_json(text: str) -> str:
-        """Strip markdown code fence if present."""
-        cleaned = text.strip()
-        if "```json" in cleaned:
-            cleaned = cleaned.split("```json", 1)[1].split("```", 1)[0]
-        elif "```" in cleaned:
-            cleaned = cleaned.split("```", 1)[1].split("```", 1)[0]
-        return cleaned.strip()
+        """Strip <think>...</think> blocks and markdown code fences if present."""
+        return extract_json(text)

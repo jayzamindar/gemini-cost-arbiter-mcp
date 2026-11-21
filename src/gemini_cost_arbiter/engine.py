@@ -33,6 +33,7 @@ from gemini_cost_arbiter.models.telemetry import (
     S3Metrics,
     TelemetryBatch,
 )
+from gemini_cost_arbiter.reasoner.circuit_breaker import LLMQuotaCircuitBreaker
 from gemini_cost_arbiter.reasoner.client import GeminiReasonerClient
 from gemini_cost_arbiter.reasoner.openrouter import OpenRouterFallbackClient
 
@@ -64,6 +65,12 @@ class GeminiCostArbiterEngine:
         self.heuristic_engine = DeterministicHeuristicEngine()
         self.guardrails = GuardrailEngine()
         self.ledger = FinOpsLedger(db_path=self.config.db_path)
+        self.circuit_breaker = LLMQuotaCircuitBreaker(
+            max_session_token_budget=self.config.max_session_token_budget,
+            daily_api_cost_limit_usd=self.config.daily_api_cost_limit_usd,
+            failure_threshold=self.config.circuit_breaker_failure_threshold,
+        )
+        self.last_fallback_tier_used: str = "heuristics"
 
         # Backward compatibility properties
         self.gemini_base_url = self.config.gemini_base_url
@@ -145,34 +152,63 @@ class GeminiCostArbiterEngine:
         )
 
         plan: RemediationPlan | None = None
+        fallback_tier_used = "heuristics"
 
-        # 1. Attempt Primary Gemini AI Reasoning
-        should_try_gemini = self._custom_client is not None or (
-            self.gemini_api_key and not self.gemini_api_key.startswith("test-")
-        )
+        if not self.circuit_breaker.allow_request():
+            logger.warning(
+                "LLM circuit breaker open (%s); bypassing external LLMs for deterministic heuristics.",
+                self.circuit_breaker.trip_reason(),
+            )
+        else:
+            # 1. Attempt Primary Gemini AI Reasoning
+            should_try_gemini = self._custom_client is not None or (
+                self.gemini_api_key and not self.gemini_api_key.startswith("test-")
+            )
 
-        if should_try_gemini:
-            try:
-                plan = await self.gemini_client.generate_plan(batch)
-            except Exception as exc:
-                logger.warning("Primary Gemini reasoning failed (%s); attempting secondary fallback.", exc)
+            if should_try_gemini:
+                try:
+                    plan = await self.gemini_client.generate_plan(batch)
+                    if plan is not None:
+                        usage = self.gemini_client.last_usage_metadata
+                        prompt_tokens = int(usage.get("promptTokenCount", 0) or 0)
+                        completion_tokens = int(usage.get("candidatesTokenCount", 0) or 0)
+                        total_tokens = int(usage.get("totalTokenCount", prompt_tokens + completion_tokens) or 0)
+                        cost = self.circuit_breaker.estimate_cost_usd(prompt_tokens, completion_tokens)
+                        self.circuit_breaker.record_success(tokens_used=total_tokens, estimated_cost_usd=cost)
+                        fallback_tier_used = "gemini"
+                except Exception as exc:
+                    self.circuit_breaker.record_failure()
+                    logger.warning("Primary Gemini reasoning failed (%s); attempting secondary fallback.", exc)
 
-        # 2. Attempt Secondary Fallback (OpenRouter) if Gemini failed or unconfigured
-        should_try_openrouter = self._custom_client is not None or (
-            self.openrouter_api_key
-            and not self.openrouter_api_key.startswith("mock_")
-            and not self.openrouter_api_key.startswith("test-")
-        )
+            # 2. Attempt Secondary Fallback (OpenRouter) if Gemini failed or unconfigured
+            should_try_openrouter = self._custom_client is not None or (
+                self.openrouter_api_key
+                and not self.openrouter_api_key.startswith("mock_")
+                and not self.openrouter_api_key.startswith("test-")
+            )
 
-        if plan is None and should_try_openrouter:
-            try:
-                plan = await self.openrouter_client.generate_plan(batch)
-            except Exception as exc:
-                logger.warning("Secondary OpenRouter fallback failed (%s); invoking deterministic heuristics.", exc)
+            if plan is None and should_try_openrouter and self.circuit_breaker.allow_request():
+                try:
+                    plan = await self.openrouter_client.generate_plan(batch)
+                    if plan is not None:
+                        usage = self.openrouter_client.last_usage_metadata
+                        prompt_tokens = int(usage.get("prompt_tokens", 0) or 0)
+                        completion_tokens = int(usage.get("completion_tokens", 0) or 0)
+                        total_tokens = int(usage.get("total_tokens", prompt_tokens + completion_tokens) or 0)
+                        cost = self.circuit_breaker.estimate_cost_usd(prompt_tokens, completion_tokens)
+                        self.circuit_breaker.record_success(tokens_used=total_tokens, estimated_cost_usd=cost)
+                        fallback_tier_used = "openrouter"
+                except Exception as exc:
+                    self.circuit_breaker.record_failure()
+                    logger.warning("Secondary OpenRouter fallback failed (%s); invoking deterministic heuristics.", exc)
 
         # 3. Deterministic Heuristic Engine Fallback
         if plan is None:
             plan = self._evaluate_heuristics(batch)
+            fallback_tier_used = "heuristics"
+
+        self.last_fallback_tier_used = fallback_tier_used
+        logger.info("Remediation plan compiled: fallback_tier_used=%s", fallback_tier_used)
 
         # 4. Reconcile all proposed actions against TelemetryBatch FinOps floors & spend caps
         reconciled_actions = self.guardrails.reconcile_with_telemetry(plan.actions, batch)
