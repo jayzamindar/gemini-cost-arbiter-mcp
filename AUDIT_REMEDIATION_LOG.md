@@ -12,11 +12,11 @@
 
 | Severity | Total Tickets | Ticket IDs | Status | Primary Risk Domains |
 |:---|:---:|:---|:---:|:---|
-| **CRITICAL** | 5 | `REM-003` (`DONE`), `REM-004` (`DONE`), `REM-007`, `REM-012`, `REM-014` | `2 DONE / 3 OPEN` | Mutable/unbounded schemas (`extra="allow"`), CLI/rollback shell interpolation, placeholder signing secrets, missing SSE 10MB body limit (HTTP 413) & predictable session IDs |
-| **HIGH** | 7 | `REM-002` (`DONE`), `REM-005` (`DONE`), `REM-008`, `REM-009`, `REM-011`, `REM-013`, `REM-015` | `2 DONE / 5 OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
+| **CRITICAL** | 5 | `REM-003` (`DONE`), `REM-004` (`DONE`), `REM-007` (`DONE`), `REM-012`, `REM-014` | `3 DONE / 2 OPEN` | Mutable/unbounded schemas (`extra="allow"`), CLI/rollback shell interpolation, placeholder signing secrets, missing SSE 10MB body limit (HTTP 413) & predictable session IDs |
+| **HIGH** | 7 | `REM-002` (`DONE`), `REM-005` (`DONE`), `REM-008` (`DONE`), `REM-009`, `REM-011`, `REM-013`, `REM-015` | `3 DONE / 4 OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
 | **MEDIUM** | 3 | `REM-006` (`DONE`), `REM-010`, `REM-016` | `1 DONE / 2 OPEN` | Missing NFKC + `.strip().casefold()` & `prod`/`prd` tag detection, `clean_gemini_schema()` multi-branch `anyOf` drop, `prompts/` omitted from `Dockerfile` |
 | **LOW** | 3 | `REM-001` (`DONE`), `REM-017` (`OPEN`), `REM-018` (`DONE`) | `2 DONE / 1 OPEN` | Case-sensitivity (`gemini.md` vs `GEMINI.md`), missing `PROJECT_MAP.md`/`BUILD_PROMPTS.md`, cross-file MCP URI & `modular_prompt.md` drift, multi-cloud docs/deploy standardization |
-| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`7 DONE / 11 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
+| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`9 DONE / 9 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
 
 ---
 
@@ -105,6 +105,7 @@
 ---
 
 ### REM-007: Eliminate Shell Injection (`shlex.quote()`) in CLI/Rollback & Remove `*` Wildcard IAM
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `CRITICAL` | Command Injection & Least-Privilege IAM
 - **Exact Evidence:** `src/gemini_cost_arbiter/guardrails/risk_scorer.py:30-45,64-122,129-156`
 - **Root Cause & Security/Reliability Impact:** `_generate_aws_cli` and `_generate_rollback_plan` interpolate `res_id` and `target_cfg` directly into shell strings without `shlex.quote()` or regex validation. `_generate_iam_policy` hardcodes `arn = "*"` for `EIP` (`risk_scorer.py:146`) and falls back to `"*"` if `res_id == "*"` (`risk_scorer.py:134,140,149,155`). `audit_and_enrich_action` accepts `bool` for `safety_risk_score` and treats `[""]` as non-empty mitigations.
@@ -117,6 +118,7 @@
 ---
 
 ### REM-008: Reconcile LLM Outputs Against `TelemetryBatch` FinOps Floors & Cap Savings
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `HIGH` | FinOps Guardrail Integrity (LLM Path)
 - **Exact Evidence:** `src/gemini_cost_arbiter/reasoner/client.py:230-233`; `src/gemini_cost_arbiter/reasoner/openrouter.py:97-100`; `src/gemini_cost_arbiter/guardrails/risk_scorer.py:28-57`
 - **Root Cause & Security/Reliability Impact:** When `GEMINI_API_KEY` or `OPENROUTER_API_KEY` is active, LLM-proposed `RemediationActionItem`s only pass through `GuardrailEngine.audit_and_enrich_action(item)`, which does NOT cross-check `TelemetryBatch`. An LLM can hallucinate `projected_monthly_savings_usd > current_monthly_spend_usd`, downsize an EC2 instance with `memory_utilization_avg_pct > 65.0`, transition an S3 bucket with `< 128 KB` avg object size, or claim `> $0.00` savings on a `reserved`/`savings_plan` resource.

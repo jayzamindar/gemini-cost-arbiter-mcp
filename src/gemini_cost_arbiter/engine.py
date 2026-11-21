@@ -174,8 +174,13 @@ class GeminiCostArbiterEngine:
         if plan is None:
             plan = self._evaluate_heuristics(batch)
 
-        # 4. Enforce Safety Guardrail Risk Filter
-        filtered_actions = self.guardrails.filter_by_risk(plan.actions, max_acceptable_risk=effective_risk_threshold)
+        # 4. Reconcile all proposed actions against TelemetryBatch FinOps floors & spend caps
+        reconciled_actions = self.guardrails.reconcile_with_telemetry(plan.actions, batch)
+
+        # 5. Enforce Safety Guardrail Risk Filter
+        filtered_actions = self.guardrails.filter_by_risk(
+            reconciled_actions, max_acceptable_risk=effective_risk_threshold
+        )
 
         # If dry-run requested, annotate rationale
         if dry_run:

@@ -446,7 +446,7 @@ def test_valid_aws_arn_formats_and_scoped_iam_actions() -> None:
             "resource_id": "eipalloc-01234567",
         }
     )
-    assert eip_policy["Statement"][0]["Resource"] == "*"
+    assert eip_policy["Statement"][0]["Resource"] == "arn:aws:ec2:*:*:elastic-ip/eipalloc-01234567"
     assert eip_policy["Statement"][0]["Action"] == ["ec2:DescribeAddresses", "ec2:ReleaseAddress"]
 
     # 4. RDS Database
