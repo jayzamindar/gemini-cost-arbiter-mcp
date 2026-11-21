@@ -63,3 +63,11 @@ def test_build_prompts_bootstrap_and_fail_closed_gate() -> None:
         assert prompt_id in text, f"Missing {prompt_id} in BUILD_PROMPTS.md"
     assert "Auto-Commit & Fail-Closed Verification Gate" in text
     assert "GATE FAILURE" in text
+
+
+def test_legacy_plan_md_removed_and_no_stale_links() -> None:
+    """Verify legacy PLAN.md is removed and no active governance docs reference it."""
+    assert not (REPO_ROOT / "PLAN.md").exists(), "Legacy PLAN.md must be removed after consolidation"
+    for doc_name in ["README.md", "PROJECT_MAP.md", "GEMINI.md", "BUILD_PROMPTS.md"]:
+        content = (REPO_ROOT / doc_name).read_text(encoding="utf-8")
+        assert "PLAN.md" not in content, f"Stale PLAN.md reference found in {doc_name}"

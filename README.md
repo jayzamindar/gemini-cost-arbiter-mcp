@@ -22,7 +22,7 @@ An enterprise-grade FinOps intelligence engine and **Model Context Protocol (MCP
 | **Repository Map** | [`PROJECT_MAP.md`](PROJECT_MAP.md) | Complete module, test, prompt, config, and deployment index |
 | **Execution Playbook** | [`BUILD_PROMPTS.md`](BUILD_PROMPTS.md) | Self-contained `BUILD-PROMPT-01..10` prompts with fail-closed commit gates |
 | **System Specifications** | [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`TRD.md`](docs/TRD.md) · [`PRD.md`](docs/PRD.md) · [`URD.md`](docs/URD.md) | C4 diagrams, mathematical formulas, product & user requirements |
-| **Audit & Readiness** | [`PLAN.md`](PLAN.md) · [`Repo_Baseline_AuditReport.md`](Repo_Baseline_AuditReport.md) · [`Production_Readiness_Report.md`](docs/Production_Readiness_Report.md) | Baseline checklist, 10-dimension audit, and 8-pillar SRE PRR |
+| **Audit & Readiness** | [`Repo_Baseline_AuditReport.md`](Repo_Baseline_AuditReport.md) · [`Production_Readiness_Report.md`](docs/Production_Readiness_Report.md) | 10-dimension baseline audit and 8-pillar SRE PRR |
 | **PromptOps & Config** | [`prompts/README.md`](prompts/README.md) · [`master_system_prompt.md`](prompts/master_system_prompt.md) · [`instance_mappings.json`](config/instance_mappings.json) | Tier-0 system prompt, domain modules, AWS pricing catalog |
 | **Containers & CI/CD** | [`Dockerfile`](Dockerfile) · [`docker-compose.yml`](docker-compose.yml) · [`test.yml`](.github/workflows/test.yml) · [`AWS Deployment Guide`](docs/AWS_Deployment_Guide.md) | Multi-stage non-root container, CI workflow, AWS Free Tier blueprints |
 
@@ -453,7 +453,10 @@ gemini-cost-arbiter-mcp/
 ├── Dockerfile                       # Multi-stage, non-root, security-hardened container (65.5MB)
 ├── docker-compose.yml               # Local compose stack with persistent SQLite volume
 ├── GEMINI.md                        # Master AI Agent & Gemini development guide
-├── PLAN.md                          # Master step-by-step production elevation checklist
+├── Enterprise_Blueprint.md          # Master production blueprint & DoD
+├── AUDIT_REMEDIATION_LOG.md         # Forensic audit & REM-001..017 backlog
+├── PROJECT_MAP.md                   # Complete repository & module index
+├── BUILD_PROMPTS.md                 # Deterministic build prompt playbook
 ├── Repo_Baseline_AuditReport.md     # 10-dimension forensic baseline audit report (Grade: 100/100)
 ├── prompts/
 │   ├── README.md                    # PromptOps catalog & engineering guide

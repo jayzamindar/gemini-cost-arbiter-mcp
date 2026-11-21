@@ -99,7 +99,6 @@
 | [`AUDIT_REMEDIATION_LOG.md`](AUDIT_REMEDIATION_LOG.md) | Forensic audit tickets (`REM-001`–`REM-017`) with `file:line` evidence & TDD specs |
 | [`PROJECT_MAP.md`](PROJECT_MAP.md) | Repository index & module map (this file) |
 | [`BUILD_PROMPTS.md`](BUILD_PROMPTS.md) | Self-contained `BUILD-PROMPT-01..10` execution playbook |
-| [`PLAN.md`](PLAN.md) | Historical baseline production elevation checklist |
 | [`Repo_Baseline_AuditReport.md`](Repo_Baseline_AuditReport.md) | Initial 10-dimension baseline audit report |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System Architecture Document (C4 & sequence flows) |
 | [`docs/TRD.md`](docs/TRD.md) | Technical Requirements Document |

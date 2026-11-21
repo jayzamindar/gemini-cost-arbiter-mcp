@@ -31,6 +31,14 @@ Every remediation ticket and feature build MUST satisfy all 10 tenets below befo
 
 ## 2. Phase-by-Phase Production & Remediation Roadmap
 
+### Baseline Implementation Milestones (Consolidated from legacy `PLAN.md`)
+All initial foundation milestones (Phases 0–10 of the legacy `PLAN.md`) are **COMPLETE** and preserved here for architectural lineage:
+- **Phases 0–2 (Specs, Packaging & Modular Core):** Authored `docs/PRD.md`, `docs/TRD.md`, `docs/URD.md`, `docs/ARCHITECTURE.md`, and `Repo_Baseline_AuditReport.md`; configured `pyproject.toml` (`gemini-cost-arbiter` CLI); decomposed core into `src/gemini_cost_arbiter/` (`config`, `models`, `reasoner`, `heuristics`, `guardrails`, `ledger`, `mcp`, `observability`, `cli`) with zero-breaking-change shims in `app/`.
+- **Phases 3–6 (AI Reasoner, Heuristics, Dual MCP & Ledger):** Integrated Gemini `thinkingConfig` + `responseSchema`, `OpenRouterFallbackClient`, `prompts/` Tier-0 + 6 domain modules, `config/instance_mappings.json`, EC2/RDS/S3/EBS/EIP heuristics, MCP JSON-RPC 2.0 (`stdio` + FastAPI `SSE`, 3 tools, 2 prompts, 3 `finops://` resources), OpenTelemetry `trace_span`, and SQLite persistence.
+- **Phases 7–10 (Docker, AWS Free Tier & Phase 9 Hardening):** Built non-root multi-stage `Dockerfile` (65.5 MB) and `deploy/aws-free-tier/` (EC2 & Lambda Web Adapter); hardened SSE auth (`hmac.compare_digest`, fail-closed prod), HMAC-SHA256 full-payload plan signing, EC2 >65% RAM floor, RI/SP `$0` savings, S3 <128 KB floor, quarantine gate, `clean_gemini_schema()` `$defs`/`$ref`/`anyOf` sanitization, deterministic IAM/CLI overwrites, and `SensitiveQueryParamFilter` (55/55 baseline tests passing; `docs/AWS_Deployment_Guide.md` & `docs/Production_Readiness_Report.md` delivered).
+
+### Active Enterprise Remediation Roadmap (`BUILD-PROMPT-01` – `BUILD-PROMPT-10`)
+
 | Build Prompt | Phase | Target Tickets | Scope & Acceptance Criteria |
 |:---|:---|:---|:---|
 | **`BUILD-PROMPT-01`** | Phase 1: Governance & Playbook Foundation | `REM-001` | Rename `gemini.md` -> `GEMINI.md` in git index; author `PROJECT_MAP.md` & `BUILD_PROMPTS.md`; make `README.md` a 100% hyperlinked hub. |

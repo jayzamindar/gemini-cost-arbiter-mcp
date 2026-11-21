@@ -15,7 +15,7 @@ Execute ONLY this task (`BUILD-PROMPT-01`), follow all TDD/zero-hallucination ru
 ### Scope (`REM-001`)
 1. Normalize `gemini.md` to uppercase `GEMINI.md` in the git index (`git mv gemini.md gemini.md.tmp && git mv gemini.md.tmp GEMINI.md`).
 2. Ensure `PROJECT_MAP.md` and `BUILD_PROMPTS.md` are complete with zero placeholders.
-3. Update `README.md` as a 100% hyperlinked Master Navigation Hub and fix `gemini.md` -> `GEMINI.md` in `README.md` and `PLAN.md`.
+3. Update `README.md` as a 100% hyperlinked Master Navigation Hub and fix `gemini.md` -> `GEMINI.md` in `README.md`.
 4. Add `tests/test_governance_docs.py` verifying governance files and zero broken relative Markdown links in `README.md`.
 
 ### Auto-Commit & Fail-Closed Verification Gate
