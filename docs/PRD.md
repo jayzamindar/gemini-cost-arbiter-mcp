@@ -80,14 +80,14 @@ sequenceDiagram
 * **FS-1.6 (Heterogeneous Batch Normalization):** Coerce heterogeneous input shapes into standardized `TelemetryBatch`.
 
 ### FS-2: AI Waste Reasoner (Google Gemini 3.8 Flash High)
-* **FS-2.1 (Algorithmic Thinking):** Forward configurable reasoning thinking budgets (`thinkingBudget: 1024-4096 tokens`) to Gemini 3.8 Flash High to evaluate trade-offs between workload burstiness and continuous idle state.
-* **FS-2.2 (Context Token Budget):** Prune telemetry into high-density JSON structures (< 4,000 tokens for 50-resource batches).
-* **FS-2.3 (Constrained Decoding):** Constrain LLM responses directly via `generationConfig.responseSchema = RemediationPlan.model_json_schema()`.
-* **FS-2.4 (Hierarchical PromptOps):** System prompts organized into Tier-0 Master Prompt (`prompts/master_system_prompt.md`) and 6 modular cognitive domain prompts (`prompts/modules/`).
+* **FS-2.1 (Algorithmic Thinking):** Forward configurable reasoning thinking budgets (`THINKING_BUDGET=2048`, range `0–8192`) and `MAX_OUTPUT_TOKENS=8192` to Gemini 3.8 Flash High.
+* **FS-2.2 (Context Compression & Prompt Defense):** Strip `<`/`>` XML breakout characters, wrap telemetry in `<untrusted_proposal_data>...</untrusted_proposal_data>`, compress defaults (`exclude_none=True, exclude_defaults=True`), and enforce `MAX_PROMPT_CHARS=32768`.
+* **FS-2.3 (Constrained Decoding):** Constrain LLM responses directly via `generationConfig.responseSchema = clean_gemini_schema(RemediationPlan.model_json_schema())` (Protobuf-safe dereferencing, `anyOf` collapse, `execution_payload` exclusion).
+* **FS-2.4 (Hierarchical PromptOps):** System prompts organized into Tier-0 Master Prompt (`prompts/master_system_prompt.md`), `prompts/modular_prompt.md`, and 6 modular cognitive domain prompts (`prompts/modules/`), loaded via path-traversal-safe `load_prompt_file()`.
 
-### FS-3: Multi-Model Secondary Fallback (OpenRouter)
-* **FS-3.1:** Maintain secondary fallback client targeting OpenAI-compatible endpoints (e.g. Qwen 2.5 Coder 32B via OpenRouter).
-* **FS-3.2:** Trigger secondary fallback if Gemini API yields HTTP 429, 503, or connection timeouts before switching to deterministic heuristics.
+### FS-3: Multi-Model Secondary Fallback (OpenRouter) & Circuit Breakers
+* **FS-3.1:** Maintain secondary fallback client targeting OpenAI-compatible endpoints (e.g. `qwen/qwen-2.5-coder-32b-instruct` via OpenRouter), stripping `<think>...</think>` blocks and markdown fences.
+* **FS-3.2 (Bounded Retries & Multi-Layer Circuit Breakers):** Both Gemini and OpenRouter clients enforce `httpx.Timeout(30.0, connect=10.0)` with `max_retries=2` (exponential backoff + jitter). `LLMQuotaCircuitBreaker` enforces `MAX_SESSION_TOKEN_BUDGET=500000`, `DAILY_API_COST_LIMIT_USD=10.00`, and `circuit_breaker_failure_threshold=3` consecutive-failure cooldown before tripping directly to deterministic heuristics.
 
 ### FS-4: Deterministic SRE Heuristic Engine (High Availability)
 * **FS-4.1 (Zero-Outage Resilience):** Guarantee 100% service uptime for SRE automation when external LLM APIs are unreachable.
@@ -102,35 +102,35 @@ sequenceDiagram
 * **FS-4.5 (Detached EBS Volumes):** If volume is detached for $\ge 30$ days, propose `TERMINATE` with pre-delete snapshot and project 100% spend reduction.
 * **FS-4.6 (Idle Elastic IPs):** If Elastic IP is unassociated for $\ge 7$ days, propose `RELEASE_ADDRESS` and project 100% spend reduction.
 
-### FS-5: Safety Guardrails & Risk Scoring (Scale 1 to 5)
-* **FS-5.1 (Calibration Scale):** Score actions from 1 (Negligible) to 5 (Critical).
-* **FS-5.2 (Quarantine Pattern for Missing Mitigations):** Strictly enforce non-empty `system_mitigations` for any action with `safety_risk_score >= 3`. If the reasoner omits mitigations, the action is quarantined (`quarantined=True`, `quarantine_reason=...`) for human review rather than silently auto-injected with generic templates.
-* **FS-5.3 (Deterministic Rollback Synthesis):** Automatically generate reversible rollback commands (`rollback` payload) for every proposed action via deterministic Python templates, unconditionally overwriting any LLM-generated strings.
-* **FS-5.4 (Least-Privilege IAM Policies & CLI Commands):** Deterministically synthesize scoped AWS IAM statements (`iam_policy`) and precise AWS CLI commands (`aws_cli`) tailored specifically to each action item in Python, stripping any LLM wildcard `*` permissions.
-* **FS-5.5 (Cryptographic Plan Digest & HMAC Signing):** Compute both SHA-256 plan digest and HMAC-SHA256 signature (`plan_signature`) using server secret `PLAN_SIGNING_SECRET` to prevent tampering.
+### FS-5: Safety Guardrails, FinOps Reconciliation & Risk Scoring (Scale 1 to 5)
+* **FS-5.1 (Calibration Scale):** Score actions from 1 (Negligible) to 5 (Critical). LLM proposals are deterministically reconciled against `TelemetryBatch` FinOps floors (`reconcile_with_telemetry()`).
+* **FS-5.2 (Quarantine & HITL Anti-Replay Gate):** Strictly enforce non-empty `system_mitigations` for `safety_risk_score >= 3` and unconditionally quarantine all `safety_risk_score == 5` actions (`quarantined=True`). Quarantined items require signed HITL SRE approval (`approve_quarantined_action`) with `<= 300s` TTL and single-use `nonce` anti-replay verification.
+* **FS-5.3 (Deterministic Rollback Synthesis):** Automatically generate reversible rollback commands (`rollback` payload) for every proposed action via `shlex.quote()`-escaped Python templates, unconditionally overwriting any LLM-generated strings.
+* **FS-5.4 (Least-Privilege IAM Policies & CLI Commands):** Deterministically synthesize scoped AWS IAM statements (`iam_policy`, zero `"*"` wildcards) and `aws_cli` commands in Python.
+* **FS-5.5 (Canonical Cryptographic Plan Signing):** Compute SHA-256 `plan_digest` and HMAC-SHA256 `plan_signature` over canonical JSON (`sort_keys=True, separators=(",", ":"), ensure_ascii=False`), rejecting missing, short (`< 32` chars), or placeholder `PLAN_SIGNING_SECRET` in `production`.
 * **FS-5.6 (Dry-Run Simulation Mode):** Support `--dry-run` flag in CLI and MCP tool calls to validate execution payloads in simulation.
 
 ### FS-6: Model Context Protocol (MCP) Interface
 * **FS-6.1 (Protocol Compliance):** Implement JSON-RPC 2.0 matching MCP Protocol Version `2024-11-05`.
-* **FS-6.2 (Tools Catalog):** Expose `analyze_infrastructure_waste`, `generate_remediation_plan`, and `get_finops_audit_summary`.
+* **FS-6.2 (Tools Catalog):** Expose `analyze_infrastructure_waste`, `generate_remediation_plan`, `get_finops_audit_summary`, and `approve_quarantined_action`.
 * **FS-6.3 (Prompts Catalog):** Expose `finops_waste_audit_runbook` and `remediation_rollback_procedure`.
 * **FS-6.4 (Resources Catalog):** Expose `finops://audit/ledger`, `finops://policies/risk-matrix`, and `finops://config/instance-mappings`.
-* **FS-6.5 (Dual Transports):** Provide standard input/output (`stdio`) for local agent execution and FastAPI Server-Sent Events (`SSE`) for containerized gateways.
-* **FS-6.6 (Transport Authentication & Fail-Closed Protection):** Protect `/sse` and `/messages` via constant-time `hmac.compare_digest()` authentication middleware across Bearer tokens, `X-API-Key`, and `?apiKey=` query params. In production mode (`ENVIRONMENT=production` or `REQUIRE_AUTH=true`), fail closed (HTTP 401 Unauthorized) when `MCP_API_KEY` is unconfigured, while keeping the `/health` probe unauthenticated.
+* **FS-6.5 (Dual Transports & Body Limits):** Provide `stdio` for local agents and FastAPI `SSE` for remote gateways, enforcing `MAX_PAYLOAD_BYTES=10485760` (10 MB / HTTP `413 Payload Too Large`) and `secrets.token_urlsafe(16)` session IDs.
+* **FS-6.6 (Transport Authentication & Fail-Closed Protection):** Protect `/sse` and `/messages` via constant-time `hmac.compare_digest()` across Bearer tokens, `X-API-Key`, and `?apiKey=`/`?api_key=` query params. In `production`, fail closed (HTTP 401) when `MCP_API_KEY` is unconfigured or a placeholder, redact `apiKey`/`api_key` case-insensitively in logs, and keep `/health` unauthenticated.
 
-### FS-7: Stateful FinOps Audit Ledger & SQLite Persistence
+### FS-7: Stateful FinOps Audit Ledger & Concurrent SQLite WAL Persistence
 * **FS-7.1:** Track cumulative metrics across active execution batches.
 * **FS-7.2:** Support ledger state reset and JSON export for auditing compliance.
-* **FS-7.3:** Support persistent storage via `--db-path`, allowing the ledger state to survive application restarts using SQLite.
+* **FS-7.3:** Support persistent storage via `--db-path` (`DB_PATH`) with SQLite WAL mode (`PRAGMA journal_mode=WAL`, `PRAGMA busy_timeout=5000`), `threading.RLock`, and `filelock.FileLock`.
 
 ### FS-8: Command Line Interface (CLI)
 * **FS-8.1:** Standalone console script `gemini-cost-arbiter`.
 * **FS-8.2:** Subcommands: `run-mcp`, `analyze`, `plan` (with `--dry-run`), `audit` (with `--db-path`), and `--version`.
 
-### FS-9: Packaging & Turnkey AWS Free Tier Blueprints
-* **FS-9.1 (Multi-Stage Docker Packaging):** Multi-stage non-root container image (`gemini-cost-arbiter-mcp:latest`) verified at 65.5 MB.
-* **FS-9.2 (EC2 Free Tier Blueprint):** Turnkey shell script (`deploy-ec2.sh`) and memory-capped production compose (`docker-compose.prod.yml`) for `t3.micro` / `t4g.small`.
-* **FS-9.3 (Lambda Serverless Container Blueprint):** Serverless container Dockerfile with AWS Lambda Web Adapter for Function URL hosting.
+### FS-9: Packaging & Multi-Cloud Deployment Blueprints
+* **FS-9.1 (Multi-Stage Docker Packaging):** Multi-stage non-root container image (`gemini-cost-arbiter-mcp:latest`) verified at 65.5 MB, including `prompts/` and `config/`.
+* **FS-9.2 (AWS Free Tier Blueprint):** `deploy/aws/` (`deploy-ec2.sh`, `docker-compose.prod.yml`, `lambda-adapter/Dockerfile`) and `docs/DEPLOYMENT_AWS.md`.
+* **FS-9.3 (Azure & Google Cloud / Gemini Blueprints):** `deploy/azure/` (`deploy-azure.sh`, `docker-compose.azure.yml`, `docs/DEPLOYMENT_AZURE.md`) and `deploy/gemini/` (`cloudbuild.yaml`, `service.yaml`, `mcp_configs.example.json`, `docs/DEPLOYMENT_GEMINI.md`).
 
 ---
 
@@ -138,11 +138,11 @@ sequenceDiagram
 
 | ID | Category | Requirement Specification |
 |:---|:---|:---|
-| **NFR-1** | **Performance & Latency** | Heuristic evaluation latency $< 500\text{ ms}$ for 100 resources. Total AI reasoning turnaround $< 5.0\text{ s}$ under normal network latency. |
+| **NFR-1** | **Performance & Latency** | Heuristic evaluation latency $< 500\text{ ms}$ for 100 resources; LLM HTTP client timeout `30.0s` (`connect=10.0s`), `max_retries=2`. |
 | **NFR-2** | **Memory & Footprint** | Engine memory consumption $\le 128\text{ MB}$ RSS in idle stdio mode; capped at $512\text{ MB}$ under peak containerized processing. |
-| **NFR-3** | **Availability & Resilience** | 100% evaluation availability guaranteed by dual-engine fallback. Zero unhandled fatal exceptions on upstream API failures. |
-| **NFR-4** | **Security & Isolation** | No credentials committed to version control. Non-root container user (`appuser`, UID 10001). Sanitization against regex prompt injection. |
-| **NFR-5** | **Type Safety & Contracts** | 100% type-annotated Python codebase adhering to Pydantic v2 strict models. |
+| **NFR-3** | **Availability & Resilience** | 100% evaluation availability via `LLMQuotaCircuitBreaker` (`MAX_SESSION_TOKEN_BUDGET=500000`, `DAILY_API_COST_LIMIT_USD=10.00`, `circuit_breaker_failure_threshold=3`) and deterministic heuristic fallback. |
+| **NFR-4** | **Security & Isolation** | Non-root container user (`appuser`, UID 10001), `MAX_PAYLOAD_BYTES=10485760` (HTTP 413), `<untrusted_proposal_data>` prompt isolation, zero-wildcard IAM, and fail-closed production secrets. |
+| **NFR-5** | **Type Safety & Contracts** | 100% strict `mypy src` type annotations, `ruff` clean, and immutable Pydantic v2 models (`extra="forbid"`, `frozen=True`). |
 | **NFR-6** | **Compatibility** | Python 3.13 and Python 3.14 operational compatibility across Linux, macOS, and Windows. |
 
 ---
@@ -150,7 +150,7 @@ sequenceDiagram
 ## 6. Success Metrics & Key Performance Indicators (KPIs)
 
 1. **Waste Detection Efficacy:** Detect $\ge 95\%$ of chronically underutilized compute, idle databases, detached volumes, and idle IPs.
-2. **Safety Compliance Rate:** $100\%$ compliance with mandatory mitigation rules (zero actions with Risk $\ge 3$ lacking snapshots or rollbacks).
+2. **Safety Compliance Rate:** $100\%$ compliance with mandatory mitigation rules, `risk == 5` quarantine, and signed HITL anti-replay verification.
 3. **Structured Egress Reliability:** $100\%$ deterministic Pydantic schema validation success on AI outputs.
-4. **Test Pass Rate:** $100\%$ automated test pass rate across 52+ tests.
+4. **Test Pass Rate & Coverage:** `94/94` automated `pytest` tests passing (`100%`), `93.42%` coverage (`>= 90%` gate), `mypy --strict` clean, and `ruff` clean.
 5. **Container Footprint:** Production container image content size $\le 100\text{ MB}$ (verified at 65.5 MB).

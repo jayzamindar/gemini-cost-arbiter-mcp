@@ -45,7 +45,7 @@ The **Gemini Autonomous Cloud-Cost Arbiter** bridges cloud infrastructure utiliz
 8. **Persistent Audit State:** Stateful FinOps tracking with in-memory performance backed by durable SQLite storage across process restarts.
 9. **Dual Transport Flexibility:** Support for both standard I/O (`stdio`) for local IDE/desktop agents and Server-Sent Events (`SSE`) for containerized network gateways.
 10. **Turnkey Zero-Cost Packaging:** Multi-stage non-root container (65.5 MB) ready for deployment on AWS Free Tier (`t3.micro`/`t4g.small` or AWS Lambda Serverless Container).
-11. **Rigorous Verification:** 100% automated test pass rate across 93+ unit, security, heuristic, governance, and protocol tests (smoke-tested against `sample_telemetry.json`).
+11. **Rigorous Verification:** `94/94` automated tests passing (`93.42%` coverage, `mypy --strict` clean, `ruff` clean, smoke-tested against `sample_telemetry.json`).
 12. **Protobuf-Safe Schema Egress (`clean_gemini_schema()`):** `DEFAULT_MODEL` (`gemini-3.8-flash-high`) `responseSchema` payloads are sanitized via `clean_gemini_schema()` to dereference `$defs`/`$ref`, collapse `anyOf`, and strip unsupported JSON-Schema keywords.
 13. **Standardized MCP Resource URIs:** Exposes `finops://audit/ledger`, `finops://policies/risk-matrix`, and `finops://config/instance-mappings` via `resources/list` and `resources/read`.
 
@@ -145,32 +145,31 @@ sequenceDiagram
     Dispatcher->>Ingestion: Parse & Validate TelemetryBatch
     Ingestion-->>Dispatcher: Validated Batch
 
-    alt Primary AI Path Available
-        Dispatcher->>Reasoner: generate_plan(batch) [Thinking Budget: 2048, responseSchema]
+    alt LLMQuotaCircuitBreaker Closed (Primary AI Path)
+        Dispatcher->>Reasoner: generate_plan(batch) [Timeout 30s, Retries=2, Thinking Budget: 2048]
         alt Gemini API 200 OK
-            Reasoner-->>Dispatcher: Raw Candidate Plan
+            Reasoner-->>Dispatcher: Raw Candidate Plan (fallback_tier_used=gemini)
         else Gemini 429 / 503 Outage
-            Dispatcher->>Dispatcher: Retry with Exponential Backoff
-            Dispatcher->>Reasoner: Secondary OpenRouter Fallback Client
+            Dispatcher->>Reasoner: Secondary OpenRouter Fallback Client (<think> stripped)
             alt OpenRouter 200 OK
-                Reasoner-->>Dispatcher: Raw Candidate Plan
-            else Secondary API Failure
-                Dispatcher->>Fallback: evaluate_fleet(batch)
-                Fallback-->>Dispatcher: Deterministic Candidate Plan
+                Reasoner-->>Dispatcher: Raw Candidate Plan (fallback_tier_used=openrouter)
+            else Secondary API Failure (Trips 3-Failure Cooldown)
+                Dispatcher->>Fallback: evaluate(batch)
+                Fallback-->>Dispatcher: Deterministic Candidate Plan (fallback_tier_used=heuristics)
             end
         end
-    else LLM Disabled or Offline
-        Dispatcher->>Fallback: evaluate_fleet(batch)
-        Fallback-->>Dispatcher: Deterministic Candidate Plan
+    else Circuit Breaker Open / Budget Exceeded ($10/day or 500k tokens)
+        Dispatcher->>Fallback: evaluate(batch)
+        Fallback-->>Dispatcher: Deterministic Candidate Plan (fallback_tier_used=heuristics)
     end
 
-    Dispatcher->>Guardrails: evaluate_and_enforce(candidate_plan, max_risk, dry_run)
-    Guardrails->>Guardrails: Validate Risk 1-5; Quarantine unmitigated Risk >= 3 actions
-    Guardrails->>Guardrails: Synthesize Rollbacks & Scoped IAM Policies
-    Guardrails->>Guardrails: Cryptographically sign plan with HMAC-SHA256 & Plan Digest
+    Dispatcher->>Guardrails: reconcile_with_telemetry() + audit_and_enrich_action()
+    Guardrails->>Guardrails: Quarantine risk == 5 & unmitigated risk >= 3; gate via approve_quarantined_action
+    Guardrails->>Guardrails: Synthesize shlex.quote() CLI/Rollbacks & Zero-Wildcard IAM Policies
+    Guardrails->>Guardrails: Canonical HMAC-SHA256 (ensure_ascii=False) & Plan Digest
     Guardrails-->>Dispatcher: Enriched RemediationPlan
-    Dispatcher->>Ledger: record_batch(batch, plan)
-    Ledger->>Ledger: Persist to SQLite
+    Dispatcher->>Ledger: record_plan(plan, count) [SQLite WAL + RLock + FileLock]
+    Ledger->>Ledger: Persist to SQLite (finops.db)
     Dispatcher-->>Client: JSON-RPC Result (RemediationPlan)
 ```
 
@@ -187,8 +186,8 @@ Designed for single-tenant local agents (Claude Desktop, Cursor, Antigravity):
 ### 4.2 Server-Sent Events (SSE)
 Designed for multi-tenant, containerized, or remote agent gateways:
 * Implemented via FastAPI and `sse-starlette`.
-* `/sse`: Establishes the downstream event stream and allocates a unique `sessionId`.
-* `/messages?sessionId=...`: Receives client JSON-RPC requests via HTTP POST.
+* `/sse`: Establishes the downstream event stream and allocates a cryptographically random `secrets.token_urlsafe(16)` `sessionId` (protected by timing-safe `hmac.compare_digest()` auth and case-insensitive `apiKey`/`api_key` log redaction).
+* `/messages?sessionId=...`: Receives client JSON-RPC requests via HTTP POST, enforcing `MAX_PAYLOAD_BYTES` (`10485760` / HTTP `413 Payload Too Large`).
 * `/health`: Container readiness and liveness check returning `{"status":"healthy","service":"gemini-cost-arbiter-mcp"}`.
 
 ---
@@ -208,23 +207,22 @@ Prompts are decoupled into a structured hierarchy under `prompts/` and indexed i
 
 ---
 
-## 6. Container Packaging & Turnkey Free Tier Deployment Topology
+## 6. Container Packaging & Multi-Cloud Deployment Topology
 
 ```
 +---------------------------------------------------------------------------------------+
-|                                AWS FREE TIER DEPLOYMENT TOPOLOGY                      |
+|                      MULTI-CLOUD & GEMINI DEPLOYMENT TOPOLOGY                         |
 +---------------------------------------------------------------------------------------+
 |                                                                                       |
-|  [OPTION 1: EC2 Free Tier Host]                                                       |
-|  AWS EC2 t3.micro / t4g.small (100% Free Tier Eligible)                               |
-|  ├── Docker Engine (Multi-stage non-root container, 65.5 MB)                          |
-|  │   └── gemini-cost-arbiter run-mcp --transport sse --port 8000                      |
-|  └── Volume Mount: /app/data -> SQLite Ledger Persistence (finops.db)                 |
+|  [AWS: deploy/aws/ -> docs/DEPLOYMENT_AWS.md]                                         |
+|  ├── EC2 Free Tier Host (t3.micro / t4g.small, 512M cap, /app/data SQLite WAL)        |
+|  └── AWS Lambda Web Adapter (awslabs/aws-lambda-adapter:0.8.4, port 8000)             |
 |                                                                                       |
-|  [OPTION 2: AWS Lambda Serverless Container]                                          |
-|  AWS Lambda Function URL (1,000,000 Free Invocations / Month)                         |
-|  └── Container with AWS Lambda Web Adapter (awslabs/aws-lambda-adapter:0.8.4)         |
-|      └── FastAPI SSE Server listening on port 8000 (/health, /sse, /messages)         |
+|  [AZURE: deploy/azure/ -> docs/DEPLOYMENT_AZURE.md]                                   |
+|  └── Azure Container Registry (ACR) + Azure Container Apps (deploy-azure.sh)          |
+|                                                                                       |
+|  [GCP / GEMINI: deploy/gemini/ -> docs/DEPLOYMENT_GEMINI.md]                          |
+|  └── Cloud Build (cloudbuild.yaml) + Cloud Run (service.yaml) + mcp_configs.example   |
 |                                                                                       |
 +---------------------------------------------------------------------------------------+
 ```
