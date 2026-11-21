@@ -124,6 +124,11 @@ class ArbiterConfig(BaseSettings):
         validation_alias="CATALOG_PATH",
         description="Path to AWS EC2 instance downsize and pricing catalog JSON.",
     )
+    prompts_dir: str = Field(
+        default="prompts",
+        validation_alias="PROMPTS_DIR",
+        description="Path to PromptOps directory containing master and modular system prompts.",
+    )
 
     # MCP Server Configuration
     mcp_server_name: str = Field(
@@ -150,6 +155,12 @@ class ArbiterConfig(BaseSettings):
         default=None,
         validation_alias="MCP_API_KEY",
         description="Optional API key requirement for SSE endpoints.",
+    )
+    max_payload_bytes: int = Field(
+        default=10485760,
+        ge=1024,
+        validation_alias="MAX_PAYLOAD_BYTES",
+        description="Maximum inbound HTTP/SSE JSON-RPC request body size in bytes (10 MB default).",
     )
     plan_signing_secret: str | None = Field(
         default=None,

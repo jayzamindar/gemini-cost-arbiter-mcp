@@ -13,6 +13,7 @@ WORKDIR /app
 # Install dependencies and package
 COPY pyproject.toml requirements.txt README.md /app/
 COPY config/ /app/config/
+COPY prompts/ /app/prompts/
 COPY src/ /app/src/
 COPY app/ /app/app/
 

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from gemini_cost_arbiter.config import ArbiterConfig
 from gemini_cost_arbiter.models.telemetry import EC2Metrics, TelemetryBatch
 from gemini_cost_arbiter.reasoner.prompt_compiler import (
     MAX_PROMPT_CHARS,
@@ -48,10 +49,7 @@ def test_xml_breakout_compression_and_path_traversal(tmp_path: Path) -> None:
     assert len(compiled) <= MAX_PROMPT_CHARS
 
     # 3. MAX_PROMPT_CHARS / max_chars truncation preserves closing delimiter
-    many_instances = [
-        EC2Metrics(resource_id=f"i-bloat-{idx:04d}", tags={"k": "x" * 100})
-        for idx in range(50)
-    ]
+    many_instances = [EC2Metrics(resource_id=f"i-bloat-{idx:04d}", tags={"k": "x" * 100}) for idx in range(50)]
     large_batch = TelemetryBatch(ec2_instances=many_instances)
     capped = compile_reasoner_prompt(large_batch, max_chars=256)
     assert len(capped) <= 256
@@ -79,3 +77,23 @@ def test_xml_breakout_compression_and_path_traversal(tmp_path: Path) -> None:
 
     with pytest.raises(FileNotFoundError):
         load_prompt_file("does_not_exist.md", prompts_dir=custom_dir)
+
+
+def test_prompts_directory_resolvable_from_arbitrary_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify prompt loading succeeds from an arbitrary cwd and PROMPTS_DIR is configurable."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("PROMPTS_DIR", raising=False)
+
+    master_prompt = load_prompt_file("master_system_prompt.md")
+    assert "FinOps" in master_prompt
+
+    cfg_default = ArbiterConfig()
+    assert cfg_default.prompts_dir == "prompts"
+
+    custom_prompts = tmp_path / "custom_prompts"
+    custom_prompts.mkdir()
+    (custom_prompts / "hello.md").write_text("PromptOps custom dir", encoding="utf-8")
+    monkeypatch.setenv("PROMPTS_DIR", str(custom_prompts))
+    cfg_env = ArbiterConfig()
+    assert cfg_env.prompts_dir == str(custom_prompts)
+    assert load_prompt_file("hello.md") == "PromptOps custom dir"

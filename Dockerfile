@@ -47,6 +47,7 @@ RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
 # Copy application files and runtime configs
 COPY config/ /app/config/
+COPY prompts/ /app/prompts/
 COPY README.md /app/
 
 # Create persistent data directory for SQLite ledger and grant ownership
