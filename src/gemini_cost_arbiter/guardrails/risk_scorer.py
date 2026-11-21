@@ -14,6 +14,8 @@ import os
 import re
 import secrets
 import shlex
+import threading
+import time
 from typing import Any
 
 from gemini_cost_arbiter.heuristics.normalization import PRODUCTION_VALUES, normalize_str
@@ -28,6 +30,17 @@ _EPHEMERAL_MACHINE_SECRET = secrets.token_hex(32)
 _RES_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._:/-]+$")
 _TARGET_CFG_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 _PREPAID_PRICING_MODELS: frozenset[str] = frozenset({"reserved", "savings_plan"})
+_PLACEHOLDER_SECRETS: frozenset[str] = frozenset(
+    {
+        "your_32_byte_hmac_signing_secret_here",
+        "your_mcp_api_key_here",
+        "changeme",
+        "secret",
+        "test",
+        "placeholder",
+    }
+)
+_HITL_MAX_TTL_SECONDS: float = 300.0
 
 
 def _validate_resource_id(res_id: Any) -> str:
@@ -47,9 +60,12 @@ def _validate_target_config(target_cfg: Any) -> str:
 class GuardrailEngine:
     """Enterprise safety evaluator ensuring compliant, least-privilege remediation payloads."""
 
+    _NONCE_LOCK = threading.RLock()
+    _USED_HITL_NONCES: set[str] = set()
+
     @staticmethod
     def audit_and_enrich_action(action_data: dict[str, Any]) -> dict[str, Any]:
-        """Validate safety risk bounds, enforce quarantine for missing mitigations, and synthesize rollbacks and IAM."""
+        """Validate safety risk bounds, enforce quarantine for missing mitigations or risk 5, and synthesize rollbacks/IAM."""
         score = action_data.get("safety_risk_score", 1)
         if type(score) is not int or score < 1 or score > 5:
             raise ValueError(f"Safety risk score {score!r} must be an integer within bounds [1, 5].")
@@ -62,9 +78,12 @@ class GuardrailEngine:
 
         resource_id = action_data.get("resource_id", "unknown-resource")
 
-        # Quarantine Pattern: Never silently auto-inject generic templates for high-risk actions.
-        # If the reasoner omitted mitigations on score >= 3, quarantine the action for human SRE sign-off.
-        if score >= 3 and not mitigations:
+        # Quarantine Pattern: Critical (5/5) actions and unmitigated high-risk (>= 3) actions
+        # MUST be quarantined pending signed HITL SRE approval.
+        if score == 5:
+            action_data["quarantined"] = True
+            action_data["quarantine_reason"] = "Critical risk (5/5) requires signed HITL SRE approval"
+        elif score >= 3 and not mitigations:
             action_data["quarantined"] = True
             action_data["quarantine_reason"] = (
                 f"Action on '{resource_id}' has safety_risk_score={score} (>= 3) "
@@ -306,26 +325,116 @@ class GuardrailEngine:
         return reconciled
 
     @staticmethod
+    def _resolve_signing_secret(secret: str | None = None) -> str:
+        """Resolve HMAC signing secret, failing closed in production on missing, short, or placeholder secrets."""
+        signing_key_str = secret if secret is not None else os.environ.get("PLAN_SIGNING_SECRET")
+        is_production = normalize_str(os.environ.get("ENVIRONMENT", "")) in PRODUCTION_VALUES
+        if is_production:
+            if not signing_key_str or not signing_key_str.strip():
+                raise RuntimeError("PLAN_SIGNING_SECRET must be configured in production environment.")
+            stripped = signing_key_str.strip()
+            if stripped.casefold() in _PLACEHOLDER_SECRETS or len(stripped) < 32:
+                raise RuntimeError(
+                    "PLAN_SIGNING_SECRET must be at least 32 characters and not a placeholder in production."
+                )
+            return signing_key_str
+
+        if not signing_key_str:
+            return _EPHEMERAL_MACHINE_SECRET
+        return signing_key_str
+
+    @staticmethod
     def attach_plan_digest(plan: RemediationPlan, secret: str | None = None) -> RemediationPlan:
         """Calculate and attach SHA-256 digest and HMAC-SHA256 signature to the full canonical plan."""
         plan_data = plan.model_dump(mode="json", exclude={"plan_digest", "plan_signature"})
-        canonical_json = json.dumps(plan_data, sort_keys=True, separators=(",", ":"))
+        canonical_json = json.dumps(plan_data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         raw_bytes = canonical_json.encode("utf-8")
         digest = hashlib.sha256(raw_bytes).hexdigest()
 
-        # Keyed HMAC-SHA256 signing with fail-closed production check
-        signing_key_str = secret or os.environ.get("PLAN_SIGNING_SECRET")
-        if not signing_key_str:
-            if normalize_str(os.environ.get("ENVIRONMENT", "")) in PRODUCTION_VALUES:
-                raise RuntimeError("PLAN_SIGNING_SECRET must be configured in production environment.")
-            signing_key_str = _EPHEMERAL_MACHINE_SECRET
-
+        signing_key_str = GuardrailEngine._resolve_signing_secret(secret=secret)
         signature = hmac.new(signing_key_str.encode("utf-8"), raw_bytes, hashlib.sha256).hexdigest()
 
-        plan_dict = plan.model_dump()
-        plan_dict["plan_digest"] = digest
-        plan_dict["plan_signature"] = signature
-        return RemediationPlan(**plan_dict)
+        return plan.model_copy(update={"plan_digest": digest, "plan_signature": signature})
+
+    @staticmethod
+    def sign_hitl_approval(
+        plan_id: str,
+        resource_id: str,
+        issued_at: int | float,
+        expires_at: int | float,
+        nonce: str,
+        secret: str | None = None,
+    ) -> str:
+        """Compute canonical HMAC-SHA256 signature for an anti-replay HITL approval payload."""
+        payload = {
+            "plan_id": plan_id,
+            "resource_id": resource_id,
+            "issued_at": issued_at,
+            "expires_at": expires_at,
+            "nonce": nonce,
+        }
+        canonical_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        signing_key_str = GuardrailEngine._resolve_signing_secret(secret=secret)
+        return hmac.new(signing_key_str.encode("utf-8"), canonical_bytes, hashlib.sha256).hexdigest()
+
+    @staticmethod
+    def verify_hitl_approval(
+        plan_id: str,
+        resource_id: str,
+        issued_at: int | float,
+        expires_at: int | float,
+        nonce: str,
+        signature: str,
+        *,
+        secret: str | None = None,
+        now: float | None = None,
+        used_nonces: set[str] | None = None,
+    ) -> bool:
+        """Verify canonical HMAC-SHA256 HITL approval, TTL (<= 300s), expiration, and nonce uniqueness."""
+        if (
+            not isinstance(plan_id, str)
+            or not plan_id.strip()
+            or not isinstance(resource_id, str)
+            or not resource_id.strip()
+            or not isinstance(nonce, str)
+            or not nonce.strip()
+            or not isinstance(signature, str)
+            or not signature.strip()
+        ):
+            return False
+
+        if isinstance(issued_at, bool) or isinstance(expires_at, bool):
+            return False
+
+        if expires_at <= issued_at or (expires_at - issued_at) > _HITL_MAX_TTL_SECONDS:
+            return False
+
+        current_time = time.time() if now is None else float(now)
+        if current_time >= expires_at:
+            return False
+
+        try:
+            expected_sig = GuardrailEngine.sign_hitl_approval(
+                plan_id=plan_id,
+                resource_id=resource_id,
+                issued_at=issued_at,
+                expires_at=expires_at,
+                nonce=nonce,
+                secret=secret,
+            )
+        except Exception:
+            return False
+
+        if not hmac.compare_digest(signature, expected_sig):
+            return False
+
+        nonce_store = used_nonces if used_nonces is not None else GuardrailEngine._USED_HITL_NONCES
+        with GuardrailEngine._NONCE_LOCK:
+            if nonce in nonce_store:
+                return False
+            nonce_store.add(nonce)
+
+        return True
 
     @staticmethod
     def verify_plan_signature(plan: RemediationPlan, secret: str | None = None) -> bool:

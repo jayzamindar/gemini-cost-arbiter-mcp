@@ -636,3 +636,67 @@ async def test_sse_auth_fail_closed_in_production() -> None:
         res_messages = await client.post("/messages", json={"jsonrpc": "2.0", "method": "tools/list", "id": 1})
         assert res_messages.status_code == 401
         assert "unconfigured in production" in res_messages.text
+
+
+def test_placeholder_signing_secret_rejected_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    """REM-012: Reject placeholder or short (<32 chars) PLAN_SIGNING_SECRET in production and preserve UTF-8."""
+    action = RemediationActionItem(
+        resource_id="i-utf8-123",
+        resource_type=CloudResourceType.EC2,
+        action_type=ActionType.RIGHTSIZE_INSTANCE,
+        target_configuration="m5.large",
+        current_monthly_spend_usd=200.0,
+        projected_monthly_spend_usd=100.0,
+        projected_monthly_savings_usd=100.0,
+        safety_risk_score=2,
+        reasoning_rationale="Optimización de costos en producción — café",
+    )
+    plan = RemediationPlan(
+        plan_id="plan-utf8-001",
+        created_at="2026-11-21T00:00:00Z",
+        actions=[action],
+        total_current_monthly_spend_usd=200.0,
+        total_projected_monthly_spend_usd=100.0,
+        total_projected_monthly_savings_usd=100.0,
+        average_risk_score=2.0,
+        max_risk_score=2,
+    )
+
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    for bad_secret in [
+        "your_32_byte_hmac_signing_secret_here",
+        "changeme",
+        "short-key-under-32",
+    ]:
+        monkeypatch.setenv("PLAN_SIGNING_SECRET", bad_secret)
+        with pytest.raises(RuntimeError, match="at least 32 characters"):
+            GuardrailEngine.attach_plan_digest(plan, secret=None)
+
+    strong_secret = "a-very-strong-production-signing-key-32bytes+"
+    monkeypatch.setenv("PLAN_SIGNING_SECRET", strong_secret)
+    signed = GuardrailEngine.attach_plan_digest(plan, secret=None)
+    assert GuardrailEngine.verify_plan_signature(signed, secret=strong_secret) is True
+
+
+def test_sse_access_log_filter_redacts_snake_case_api_key() -> None:
+    """REM-014: SensitiveQueryParamFilter must redact api_key / API_KEY case-insensitively."""
+    import logging
+
+    from gemini_cost_arbiter.mcp.server_sse import SensitiveQueryParamFilter
+
+    filter_instance = SensitiveQueryParamFilter()
+    record = logging.LogRecord(
+        name="uvicorn.access",
+        level=logging.INFO,
+        pathname="server.py",
+        lineno=10,
+        msg='%s - "%s %s HTTP/%s" %d',
+        args=("127.0.0.1:45678", "GET", "/sse?api_key=snake_secret_999&API_KEY=upper_888", "1.1", 200),
+        exc_info=None,
+    )
+    filter_instance.filter(record)
+    formatted = record.getMessage()
+    assert "snake_secret_999" not in formatted
+    assert "upper_888" not in formatted
+    assert "api_key=***" in formatted
+    assert "API_KEY=***" in formatted

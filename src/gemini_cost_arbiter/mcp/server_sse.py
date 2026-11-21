@@ -7,6 +7,7 @@ import hmac
 import json
 import logging
 import re
+import secrets
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -16,24 +17,36 @@ from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
 from gemini_cost_arbiter.engine import GeminiCostArbiterEngine
+from gemini_cost_arbiter.heuristics.normalization import PRODUCTION_VALUES, normalize_str
 
 logger = logging.getLogger("gemini_cost_arbiter.sse")
 
+_PLACEHOLDER_API_KEYS: frozenset[str] = frozenset(
+    {
+        "your_mcp_api_key_here",
+        "your_32_byte_hmac_signing_secret_here",
+        "changeme",
+        "secret",
+        "test",
+        "placeholder",
+    }
+)
+
 
 class SensitiveQueryParamFilter(logging.Filter):
-    """Redact sensitive query parameters such as apiKey from access logs."""
+    """Redact sensitive query parameters such as apiKey/api_key from access logs."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         if isinstance(record.args, tuple):
             new_args: list[object] = []
             for arg in record.args:
                 if isinstance(arg, str):
-                    new_args.append(re.sub(r"apiKey=[^&\s\"]+", "apiKey=***", arg))
+                    new_args.append(re.sub(r"(?i)(api_?key)=[^&\s\"]+", r"\1=***", arg))
                 else:
                     new_args.append(arg)
             record.args = tuple(new_args)
         if isinstance(record.msg, str):
-            record.msg = re.sub(r"apiKey=[^&\s\"]+", "apiKey=***", record.msg)
+            record.msg = re.sub(r"(?i)(api_?key)=[^&\s\"]+", r"\1=***", record.msg)
         return True
 
 
@@ -57,11 +70,22 @@ def create_sse_app(
 
     def _verify_auth(request: Request) -> None:
         """Enforce timing-safe authentication and fail-closed security in production."""
-        is_production = arbiter_engine.config.environment.lower() == "production"
-        if (is_production or arbiter_engine.config.require_auth) and not effective_api_key:
+        is_production = normalize_str(arbiter_engine.config.environment) in PRODUCTION_VALUES
+        if is_production:
+            if not effective_api_key or not effective_api_key.strip():
+                raise HTTPException(
+                    status_code=401,
+                    detail="Unauthorized: Server configuration mandates authentication, but MCP_API_KEY is unconfigured in production.",
+                )
+            if effective_api_key.strip().casefold() in _PLACEHOLDER_API_KEYS:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Unauthorized: Server configuration rejects placeholder MCP_API_KEY in production.",
+                )
+        elif arbiter_engine.config.require_auth and not effective_api_key:
             raise HTTPException(
                 status_code=401,
-                detail="Unauthorized: Server configuration mandates authentication, but MCP_API_KEY is unconfigured in production.",
+                detail="Unauthorized: Server configuration mandates authentication, but MCP_API_KEY is unconfigured.",
             )
 
         if not effective_api_key:
@@ -96,7 +120,7 @@ def create_sse_app(
     async def sse_endpoint(request: Request) -> EventSourceResponse:
         """SSE stream for receiving JSON-RPC notifications and tool call results."""
         _verify_auth(request)
-        client_id = str(id(request))
+        client_id = secrets.token_urlsafe(16)
         queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         message_queues[client_id] = queue
 
@@ -124,8 +148,28 @@ def create_sse_app(
     async def handle_message_post(request: Request) -> JSONResponse:
         """Process inbound JSON-RPC 2.0 messages posted to the session endpoint."""
         _verify_auth(request)
+
+        max_bytes = arbiter_engine.config.max_payload_bytes
+        content_length_hdr = request.headers.get("content-length")
+        if content_length_hdr is not None:
+            try:
+                if int(content_length_hdr) > max_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Payload Too Large: Request exceeds MAX_PAYLOAD_BYTES ({max_bytes} bytes).",
+                    )
+            except ValueError:
+                pass
+
+        raw_body = await request.body()
+        if len(raw_body) > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Payload Too Large: Request exceeds MAX_PAYLOAD_BYTES ({max_bytes} bytes).",
+            )
+
         try:
-            body = await request.json()
+            body = json.loads(raw_body.decode("utf-8"))
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid JSON: {e}")
 

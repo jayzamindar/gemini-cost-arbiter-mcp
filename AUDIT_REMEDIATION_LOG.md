@@ -12,11 +12,11 @@
 
 | Severity | Total Tickets | Ticket IDs | Status | Primary Risk Domains |
 |:---|:---:|:---|:---:|:---|
-| **CRITICAL** | 5 | `REM-003` (`DONE`), `REM-004` (`DONE`), `REM-007` (`DONE`), `REM-012`, `REM-014` | `3 DONE / 2 OPEN` | Mutable/unbounded schemas (`extra="allow"`), CLI/rollback shell interpolation, placeholder signing secrets, missing SSE 10MB body limit (HTTP 413) & predictable session IDs |
-| **HIGH** | 7 | `REM-002` (`DONE`), `REM-005` (`DONE`), `REM-008` (`DONE`), `REM-009` (`DONE`), `REM-011` (`DONE`), `REM-013`, `REM-015` | `5 DONE / 2 OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
-| **MEDIUM** | 3 | `REM-006` (`DONE`), `REM-010` (`DONE`), `REM-016` | `2 DONE / 1 OPEN` | Missing NFKC + `.strip().casefold()` & `prod`/`prd` tag detection, `clean_gemini_schema()` multi-branch `anyOf` drop, `prompts/` omitted from `Dockerfile` |
-| **LOW** | 3 | `REM-001` (`DONE`), `REM-017` (`OPEN`), `REM-018` (`DONE`) | `2 DONE / 1 OPEN` | Case-sensitivity (`gemini.md` vs `GEMINI.md`), missing `PROJECT_MAP.md`/`BUILD_PROMPTS.md`, cross-file MCP URI & `modular_prompt.md` drift, multi-cloud docs/deploy standardization |
-| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`12 DONE / 6 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
+| **CRITICAL** | 5 | `REM-003` (`DONE`), `REM-004` (`DONE`), `REM-007` (`DONE`), `REM-012` (`DONE`), `REM-014` (`DONE`) | `5 DONE / 0 OPEN` | Mutable/unbounded schemas (`extra="allow"`), CLI/rollback shell interpolation, placeholder signing secrets, missing SSE 10MB body limit (HTTP 413) & predictable session IDs |
+| **HIGH** | 7 | `REM-002` (`DONE`), `REM-005` (`DONE`), `REM-008` (`DONE`), `REM-009` (`DONE`), `REM-011` (`DONE`), `REM-013` (`DONE`), `REM-015` (`DONE`) | `7 DONE / 0 OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
+| **MEDIUM** | 3 | `REM-006` (`DONE`), `REM-010` (`DONE`), `REM-016` (`DONE`) | `3 DONE / 0 OPEN` | Missing NFKC + `.strip().casefold()` & `prod`/`prd` tag detection, `clean_gemini_schema()` multi-branch `anyOf` drop, `prompts/` omitted from `Dockerfile` |
+| **LOW** | 3 | `REM-001` (`DONE`), `REM-017` (`DONE`), `REM-018` (`DONE`) | `3 DONE / 0 OPEN` | Case-sensitivity (`gemini.md` vs `GEMINI.md`), missing `PROJECT_MAP.md`/`BUILD_PROMPTS.md`, cross-file MCP URI & `modular_prompt.md` drift, multi-cloud docs/deploy standardization |
+| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`18 DONE / 0 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
 
 ---
 
@@ -171,6 +171,7 @@
 ---
 
 ### REM-012: Canonical JSON `ensure_ascii=False` & Reject Placeholder Signing Secrets
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `CRITICAL` | Cryptographic Integrity & Secret Hygiene
 - **Exact Evidence:** `src/gemini_cost_arbiter/guardrails/risk_scorer.py:176,181-192`; `src/gemini_cost_arbiter/config.py:123-132`
 - **Root Cause & Security/Reliability Impact:** `attach_plan_digest()` omits `ensure_ascii=False` in `json.dumps(...)` (`risk_scorer.py:176`), causing canonicalization drift on non-ASCII tags. In `production`, `risk_scorer.py:182-184` only checks `if not signing_key_str:`, allowing `.env.example:8` placeholder `"your_32_byte_hmac_signing_secret_here"` or weak short secrets (`< 32` chars).
@@ -183,6 +184,7 @@
 ---
 
 ### REM-013: Enforce `risk == 5` Quarantine & Signed Anti-Replay HITL Approval Gate
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `HIGH` | Human-in-the-Loop (HITL) Quarantine & Anti-Replay Security
 - **Exact Evidence:** `src/gemini_cost_arbiter/models/remediation.py:53-60`; `src/gemini_cost_arbiter/guardrails/risk_scorer.py:39-47`; `src/gemini_cost_arbiter/engine.py:300-383`
 - **Root Cause & Security/Reliability Impact:** Critical destructive actions (`safety_risk_score == 5`) are not automatically quarantined when mitigations are present, and `quarantined=True` items have no cryptographic HITL approval/release mechanism (`approve_quarantined_action` MCP tool or `/approve` endpoint) with canonical HMAC-SHA256, `issued_at`/`expires_at` (`<= 300s` TTL), and `nonce` deduplication.
@@ -194,6 +196,7 @@
 ---
 
 ### REM-014: Enforce SSE Payload Body Limit (`MAX_PAYLOAD_BYTES` / HTTP 413), Random Session IDs & Placeholder Key Rejection
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `CRITICAL` | SSE Transport Security & DoS Protection
 - **Exact Evidence:** `src/gemini_cost_arbiter/mcp/server_sse.py:29,34,59-66,97,121-129`; `src/gemini_cost_arbiter/config.py:118-137`
 - **Root Cause & Security/Reliability Impact:** `POST /messages` calls `await request.json()` (`server_sse.py:126`) without a `MAX_PAYLOAD_BYTES` (`10485760` / 10 MB) limit, enabling memory-exhaustion DoS. `GET /sse` uses predictable `str(id(request))` (`server_sse.py:97`) instead of `secrets.token_urlsafe(16)`. `_verify_auth` accepts placeholder `MCP_API_KEY` values in `production`, and `SensitiveQueryParamFilter` misses `api_key=`.
@@ -206,6 +209,7 @@
 ---
 
 ### REM-015: SQLite WAL Mode, `busy_timeout=5000`, `threading.RLock` + `filelock.FileLock` & Auto-Mkdir
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `HIGH` | SQLite Concurrency & Cross-Platform Persistence
 - **Exact Evidence:** `src/gemini_cost_arbiter/ledger/store.py:14,31,59,102,110,137`
 - **Root Cause & Security/Reliability Impact:** `FinOpsLedger` claims thread safety (`store.py:14`) but has zero locks, does not enable `PRAGMA journal_mode=WAL` or `PRAGMA busy_timeout=5000`, does not create missing parent directories, and calls `json.dumps(plan_dict)` without `ensure_ascii=False`. Concurrent SSE/stdio access triggers `sqlite3.OperationalError: database is locked`.
@@ -218,6 +222,7 @@
 ---
 
 ### REM-016: Docker Image `prompts/` Inclusion & `PROMPTS_DIR` Path Portability
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `MEDIUM` | Containerization & Deployment Parity
 - **Exact Evidence:** `Dockerfile:48-51`; `deploy/aws-free-tier/lambda-adapter/Dockerfile`
 - **Root Cause & Security/Reliability Impact:** `Dockerfile:49-50` copies `config/` and `README.md` into `/app/` but omits `prompts/`. Once `prompt_compiler.py` loads `prompts/` (REM-009), containers will fail unless `prompts/` is copied and `PROMPTS_DIR` is resolved dynamically.
@@ -229,6 +234,7 @@
 ---
 
 ### REM-017: Cross-File Documentation, MCP `finops://` URI & `prompts/modular_prompt.md` Synchronization
+- **Status:** `DONE` (2026-11-21)
 - **Severity & Category:** `LOW` | Documentation Accuracy & PromptOps Registry
 - **Exact Evidence:** `gemini.md:65-70,104,161,164,209-210,219`; `prompts/README.md:41`; `docs/ARCHITECTURE.md:48`; `prompts/` (missing `modular_prompt.md`)
 - **Root Cause & Security/Reliability Impact:** `gemini.md:209-210` omits the `finops://` scheme (`engine.py:506,512`), `gemini.md:161,164` references nonexistent `telemetry_sample.json` instead of `sample_telemetry.json`, `gemini.md:219` and `prompts/README.md:41` omit `clean_gemini_schema()`, `docs/ARCHITECTURE.md:48` cites `52` tests instead of `55+`, and `prompts/modular_prompt.md` is missing.

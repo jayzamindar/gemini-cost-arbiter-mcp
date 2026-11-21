@@ -71,6 +71,7 @@ class GeminiCostArbiterEngine:
             failure_threshold=self.config.circuit_breaker_failure_threshold,
         )
         self.last_fallback_tier_used: str = "heuristics"
+        self._used_hitl_nonces: set[str] = set()
 
         # Backward compatibility properties
         self.gemini_base_url = self.config.gemini_base_url
@@ -375,6 +376,38 @@ class GeminiCostArbiterEngine:
                             "description": "Retrieve cumulative FinOps audit metrics and historical savings across all evaluated batches.",
                             "inputSchema": {"type": "object", "properties": {}},
                         },
+                        {
+                            "name": "approve_quarantined_action",
+                            "description": "Verify a signed, time-bounded anti-replay HITL SRE approval token to release a quarantined remediation action.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "plan_id": {"type": "string", "description": "RemediationPlan UUID"},
+                                    "resource_id": {"type": "string", "description": "Target AWS resource ID"},
+                                    "issued_at": {
+                                        "type": "number",
+                                        "description": "Unix epoch seconds when approval was issued",
+                                    },
+                                    "expires_at": {
+                                        "type": "number",
+                                        "description": "Unix epoch seconds when approval expires (<= 300s TTL)",
+                                    },
+                                    "nonce": {"type": "string", "description": "Single-use anti-replay nonce"},
+                                    "signature": {
+                                        "type": "string",
+                                        "description": "Hex HMAC-SHA256 signature over canonical approval payload",
+                                    },
+                                },
+                                "required": [
+                                    "plan_id",
+                                    "resource_id",
+                                    "issued_at",
+                                    "expires_at",
+                                    "nonce",
+                                    "signature",
+                                ],
+                            },
+                        },
                     ]
                 },
             }
@@ -412,6 +445,54 @@ class GeminiCostArbiterEngine:
                         "jsonrpc": "2.0",
                         "id": msg_id,
                         "result": {"content": [{"type": "text", "text": audit.model_dump_json(indent=2)}]},
+                    }
+
+                elif tool_name == "approve_quarantined_action":
+                    plan_id = arguments.get("plan_id")
+                    resource_id = arguments.get("resource_id")
+                    issued_at = arguments.get("issued_at")
+                    expires_at = arguments.get("expires_at")
+                    nonce = arguments.get("nonce")
+                    signature = arguments.get("signature")
+                    if (
+                        not isinstance(plan_id, str)
+                        or not isinstance(resource_id, str)
+                        or not isinstance(issued_at, (int, float))
+                        or not isinstance(expires_at, (int, float))
+                        or not isinstance(nonce, str)
+                        or not isinstance(signature, str)
+                    ):
+                        raise ValueError(
+                            "approve_quarantined_action requires plan_id, resource_id, issued_at, expires_at, nonce, signature."
+                        )
+
+                    approved = self.guardrails.verify_hitl_approval(
+                        plan_id=plan_id,
+                        resource_id=resource_id,
+                        issued_at=issued_at,
+                        expires_at=expires_at,
+                        nonce=nonce,
+                        signature=signature,
+                        secret=self.config.plan_signing_secret,
+                        used_nonces=self._used_hitl_nonces,
+                    )
+                    if not approved:
+                        raise ValueError(
+                            "HITL approval rejected: invalid signature, expired/excessive TTL (>300s), or replayed nonce."
+                        )
+
+                    approval_payload = {
+                        "approved": True,
+                        "quarantined": False,
+                        "plan_id": plan_id,
+                        "resource_id": resource_id,
+                        "nonce": nonce,
+                        "expires_at": expires_at,
+                    }
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": msg_id,
+                        "result": {"content": [{"type": "text", "text": json.dumps(approval_payload, indent=2)}]},
                     }
 
                 else:
