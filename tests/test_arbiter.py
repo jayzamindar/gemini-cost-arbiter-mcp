@@ -12,24 +12,22 @@ Tests:
 
 import json
 from unittest.mock import AsyncMock
-import pytest
+
 import httpx
+import pytest
 from pydantic import ValidationError
 
+from app.engine import GeminiCostArbiterEngine
 from app.schemas import (
     ActionType,
     ArbiterConfig,
     CloudResourceType,
     EC2Metrics,
-    FinOpsAuditSummary,
     RDSMetrics,
     RemediationActionItem,
-    RemediationPlan,
     S3Metrics,
     TelemetryBatch,
-    WasteAnalysisSummary,
 )
-from app.engine import GeminiCostArbiterEngine
 
 
 @pytest.fixture
@@ -362,9 +360,7 @@ class TestGeminiAIReasoningEngine:
                                                     "Pre-cutover AMI snapshot",
                                                     "Canary traffic test",
                                                 ],
-                                                "execution_payload": {
-                                                    "command": "aws ec2 modify-instance-attribute"
-                                                },
+                                                "execution_payload": {"command": "aws ec2 modify-instance-attribute"},
                                             }
                                         ]
                                     }
@@ -461,9 +457,7 @@ class TestFinOpsAuditLedger:
         audit_2 = arbiter_engine.get_finops_audit_summary()
         assert audit_2.total_batches_processed == 2
         assert audit_2.total_resources_analyzed == 8
-        assert audit_2.cumulative_projected_savings_usd == round(
-            audit_1.cumulative_projected_savings_usd * 2, 2
-        )
+        assert audit_2.cumulative_projected_savings_usd == round(audit_1.cumulative_projected_savings_usd * 2, 2)
 
         # Reset
         arbiter_engine.reset_audit_ledger()
@@ -559,9 +553,7 @@ class TestModelContextProtocol:
         assert len(parsed["actions"]) > 0
 
     @pytest.mark.asyncio
-    async def test_mcp_call_audit_summary(
-        self, arbiter_engine: GeminiCostArbiterEngine
-    ) -> None:
+    async def test_mcp_call_audit_summary(self, arbiter_engine: GeminiCostArbiterEngine) -> None:
         """Verify MCP tools/call for get_finops_audit_summary."""
         msg = {
             "jsonrpc": "2.0",

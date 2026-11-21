@@ -1,7 +1,8 @@
 """Tests for SSE and HTTP MCP endpoints using FastAPI."""
 
-import pytest
 import httpx
+import pytest
+
 from gemini_cost_arbiter.engine import GeminiCostArbiterEngine
 from gemini_cost_arbiter.mcp.server_sse import create_sse_app
 

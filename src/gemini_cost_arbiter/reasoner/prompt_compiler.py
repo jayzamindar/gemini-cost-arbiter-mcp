@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict
+from typing import Any
+
 from gemini_cost_arbiter.models.telemetry import TelemetryBatch
 
 SYSTEM_PROMPT = """You are an elite FinOps SRE Cloud-Cost Arbiter.
@@ -38,9 +39,9 @@ def sanitize_string(value: str, max_length: int = 128) -> str:
     return cleaned[:max_length]
 
 
-def sanitize_telemetry_dict(data: Dict[str, Any]) -> Dict[str, Any]:
+def sanitize_telemetry_dict(data: dict[str, Any]) -> dict[str, Any]:
     """Recursively sanitize telemetry metadata and tags before prompt compilation."""
-    sanitized: Dict[str, Any] = {}
+    sanitized: dict[str, Any] = {}
     for key, value in data.items():
         clean_key = sanitize_string(key, max_length=64)
         if isinstance(value, str):

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, cast
+
 from gemini_cost_arbiter.models.remediation import ActionType, RemediationActionItem
 from gemini_cost_arbiter.models.telemetry import CloudResourceType, EC2Metrics
 
-DEFAULT_INSTANCE_DOWNSIZE_MAP: Dict[str, str] = {
+DEFAULT_INSTANCE_DOWNSIZE_MAP: dict[str, str] = {
     "m5.8xlarge": "m5.4xlarge",
     "m5.4xlarge": "m5.xlarge",
     "m5.2xlarge": "m5.large",
@@ -21,7 +22,7 @@ DEFAULT_INSTANCE_DOWNSIZE_MAP: Dict[str, str] = {
     "t3.xlarge": "t3.medium",
 }
 
-DEFAULT_HOURLY_RATES: Dict[str, float] = {
+DEFAULT_HOURLY_RATES: dict[str, float] = {
     "m5.8xlarge": 1.536,
     "m5.4xlarge": 0.768,
     "m5.2xlarge": 0.384,
@@ -46,12 +47,12 @@ DEFAULT_HOURLY_RATES: Dict[str, float] = {
 }
 
 
-def load_instance_catalog() -> Dict[str, Any]:
+def load_instance_catalog() -> dict[str, Any]:
     """Load externalized instance mapping and pricing catalog from config/instance_mappings.json."""
     config_path = Path("config/instance_mappings.json")
     if config_path.exists():
         try:
-            return json.loads(config_path.read_text(encoding="utf-8"))
+            return cast(dict[str, Any], json.loads(config_path.read_text(encoding="utf-8")))
         except Exception:
             pass
     return {
@@ -60,18 +61,24 @@ def load_instance_catalog() -> Dict[str, Any]:
     }
 
 
-def load_instance_mappings() -> Dict[str, str]:
+def load_instance_mappings() -> dict[str, str]:
     """Load instance downsize mappings from catalog."""
-    return load_instance_catalog().get("instance_downsize_map", DEFAULT_INSTANCE_DOWNSIZE_MAP)
+    return cast(
+        dict[str, str],
+        load_instance_catalog().get("instance_downsize_map", DEFAULT_INSTANCE_DOWNSIZE_MAP),
+    )
 
 
-def get_instance_hourly_rate(instance_type: str) -> Optional[float]:
+def get_instance_hourly_rate(instance_type: str) -> float | None:
     """Lookup real standard AWS On-Demand hourly rate for an instance size."""
-    rates = load_instance_catalog().get("instance_hourly_rates_usd", DEFAULT_HOURLY_RATES)
+    rates = cast(
+        dict[str, float],
+        load_instance_catalog().get("instance_hourly_rates_usd", DEFAULT_HOURLY_RATES),
+    )
     return rates.get(instance_type.lower())
 
 
-def evaluate_ec2_instance(ec2: EC2Metrics) -> Optional[RemediationActionItem]:
+def evaluate_ec2_instance(ec2: EC2Metrics) -> RemediationActionItem | None:
     """Evaluate EC2 instance for underutilization waste using real AWS pricing lookups."""
     # Memory Floor Guardrail: Abort downsizing if memory utilization is high to prevent OOM crash
     if ec2.memory_utilization_avg_pct > 65.0:
@@ -107,11 +114,7 @@ def evaluate_ec2_instance(ec2: EC2Metrics) -> Optional[RemediationActionItem]:
                     else catalog_monthly_savings
                 )
                 post_spend = round(max(0.0, ec2.monthly_spend_usd - savings), 2)
-                savings_pct = (
-                    round((savings / ec2.monthly_spend_usd) * 100, 1)
-                    if ec2.monthly_spend_usd > 0
-                    else 50.0
-                )
+                savings_pct = round((savings / ec2.monthly_spend_usd) * 100, 1) if ec2.monthly_spend_usd > 0 else 50.0
                 rationale_suffix = (
                     f" Rightsizing from {ec2.current_instance_type} (${curr_rate:.3f}/hr) to "
                     f"{target_spec} (${tgt_rate:.3f}/hr) saves ~${savings:.2f}/mo ({savings_pct}% reduction)."
@@ -120,9 +123,11 @@ def evaluate_ec2_instance(ec2: EC2Metrics) -> Optional[RemediationActionItem]:
                 # Fallback to standard 65% estimate if unlisted in catalog
                 savings = round(ec2.monthly_spend_usd * 0.65, 2)
                 post_spend = round(ec2.monthly_spend_usd - savings, 2)
-                rationale_suffix = f" Rightsizing from {ec2.current_instance_type} to {target_spec} saves ~65% monthly spend."
+                rationale_suffix = (
+                    f" Rightsizing from {ec2.current_instance_type} to {target_spec} saves ~65% monthly spend."
+                )
 
-        mitigations: List[str] = [
+        mitigations: list[str] = [
             f"Create pre-migration AMI snapshot ('ami-backup-{ec2.resource_id}')",
             "Schedule execution during off-peak maintenance window",
             "Automated rollback script via AWS CLI instance modification hook",

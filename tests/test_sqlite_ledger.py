@@ -1,6 +1,7 @@
 """Tests for SQLite-backed FinOps audit ledger persistence."""
 
 from pathlib import Path
+
 from gemini_cost_arbiter.ledger.store import FinOpsLedger
 
 

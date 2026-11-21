@@ -9,11 +9,12 @@ Validates:
 """
 
 import pytest
+
 from gemini_cost_arbiter.engine import GeminiCostArbiterEngine
 from gemini_cost_arbiter.guardrails.risk_scorer import GuardrailEngine
 from gemini_cost_arbiter.heuristics.ebs_rules import evaluate_ebs_volume
 from gemini_cost_arbiter.heuristics.eip_rules import evaluate_elastic_ip
-from gemini_cost_arbiter.models.remediation import ActionType, RemediationPlan
+from gemini_cost_arbiter.models.remediation import ActionType
 from gemini_cost_arbiter.models.telemetry import (
     CloudResourceType,
     EBSMetrics,
@@ -46,16 +47,18 @@ def test_prompt_injection_sanitization() -> None:
 
 def test_least_privilege_iam_policy_generation() -> None:
     """Verify minimal IAM policy statements are synthesized for actions."""
-    enriched = GuardrailEngine.audit_and_enrich_action({
-        "resource_id": "i-prod-web",
-        "resource_type": CloudResourceType.EC2,
-        "action_type": ActionType.RIGHTSIZE_INSTANCE,
-        "current_monthly_spend_usd": 300.0,
-        "projected_monthly_spend_usd": 100.0,
-        "projected_monthly_savings_usd": 200.0,
-        "safety_risk_score": 4,
-        "system_mitigations": ["Pre-execution AMI snapshot"],
-    })
+    enriched = GuardrailEngine.audit_and_enrich_action(
+        {
+            "resource_id": "i-prod-web",
+            "resource_type": CloudResourceType.EC2,
+            "action_type": ActionType.RIGHTSIZE_INSTANCE,
+            "current_monthly_spend_usd": 300.0,
+            "projected_monthly_spend_usd": 100.0,
+            "projected_monthly_savings_usd": 200.0,
+            "safety_risk_score": 4,
+            "system_mitigations": ["Pre-execution AMI snapshot"],
+        }
+    )
     payload = enriched.get("execution_payload", {})
     assert "iam_policy" in payload
     iam = payload["iam_policy"]

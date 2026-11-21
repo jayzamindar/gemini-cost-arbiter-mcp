@@ -12,7 +12,8 @@ import json
 import logging
 import os
 import secrets
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from gemini_cost_arbiter.models.remediation import RemediationActionItem, RemediationPlan
 
 logger = logging.getLogger("gemini_cost_arbiter.guardrails")
@@ -25,13 +26,13 @@ class GuardrailEngine:
     """Enterprise safety evaluator ensuring compliant, least-privilege remediation payloads."""
 
     @staticmethod
-    def audit_and_enrich_action(action_data: Dict[str, Any]) -> Dict[str, Any]:
+    def audit_and_enrich_action(action_data: dict[str, Any]) -> dict[str, Any]:
         """Validate safety risk bounds, enforce quarantine for missing mitigations, and synthesize rollbacks and IAM."""
         score = action_data.get("safety_risk_score", 1)
         if score < 1 or score > 5:
             raise ValueError(f"Safety risk score {score} must be within bounds [1, 5].")
 
-        mitigations: List[str] = list(action_data.get("system_mitigations", []))
+        mitigations: list[str] = list(action_data.get("system_mitigations", []))
         resource_id = action_data.get("resource_id", "unknown-resource")
 
         # Quarantine Pattern: Never silently auto-inject generic templates for high-risk actions.
@@ -57,10 +58,12 @@ class GuardrailEngine:
         return action_data
 
     @staticmethod
-    def _generate_rollback_plan(action_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_rollback_plan(action_data: dict[str, Any]) -> dict[str, Any]:
         """Synthesize deterministic rollback payload based on resource type and action."""
         raw_type = action_data.get("resource_type", "")
-        res_type = (raw_type.value if hasattr(raw_type, "value") else str(raw_type)).upper().replace("CLOUDRESOURCETYPE.", "")
+        res_type = (
+            (raw_type.value if hasattr(raw_type, "value") else str(raw_type)).upper().replace("CLOUDRESOURCETYPE.", "")
+        )
         res_id = action_data.get("resource_id", "res")
 
         if "EC2" in res_type:
@@ -94,10 +97,12 @@ class GuardrailEngine:
         return {"strategy": "manual_sre_intervention", "action": "inspect_system_logs"}
 
     @staticmethod
-    def _generate_aws_cli(action_data: Dict[str, Any]) -> str:
+    def _generate_aws_cli(action_data: dict[str, Any]) -> str:
         """Deterministically generate exact AWS CLI execution command for remediation."""
         raw_type = action_data.get("resource_type", "")
-        res_type = (raw_type.value if hasattr(raw_type, "value") else str(raw_type)).upper().replace("CLOUDRESOURCETYPE.", "")
+        res_type = (
+            (raw_type.value if hasattr(raw_type, "value") else str(raw_type)).upper().replace("CLOUDRESOURCETYPE.", "")
+        )
         res_id = action_data.get("resource_id", "res")
         raw_action = action_data.get("action_type", "")
         action_name = (raw_action.value if hasattr(raw_action, "value") else str(raw_action)).upper()
@@ -122,10 +127,12 @@ class GuardrailEngine:
         return f"aws ec2 describe-instances --instance-ids {res_id}"
 
     @staticmethod
-    def _generate_iam_policy(action_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_iam_policy(action_data: dict[str, Any]) -> dict[str, Any]:
         """Generate exact least-privilege AWS IAM statement required for execution and rollback."""
         raw_type = action_data.get("resource_type", "")
-        res_type = (raw_type.value if hasattr(raw_type, "value") else str(raw_type)).upper().replace("CLOUDRESOURCETYPE.", "")
+        res_type = (
+            (raw_type.value if hasattr(raw_type, "value") else str(raw_type)).upper().replace("CLOUDRESOURCETYPE.", "")
+        )
         res_id = action_data.get("resource_id", "*")
         raw_action = action_data.get("action_type", "")
         action_name = (raw_action.value if hasattr(raw_action, "value") else str(raw_action)).upper()
@@ -170,7 +177,7 @@ class GuardrailEngine:
         }
 
     @staticmethod
-    def attach_plan_digest(plan: RemediationPlan, secret: Optional[str] = None) -> RemediationPlan:
+    def attach_plan_digest(plan: RemediationPlan, secret: str | None = None) -> RemediationPlan:
         """Calculate and attach SHA-256 digest and HMAC-SHA256 signature to the full canonical plan."""
         plan_data = plan.model_dump(mode="json", exclude={"plan_digest", "plan_signature"})
         canonical_json = json.dumps(plan_data, sort_keys=True, separators=(",", ":"))
@@ -192,7 +199,7 @@ class GuardrailEngine:
         return RemediationPlan(**plan_dict)
 
     @staticmethod
-    def verify_plan_signature(plan: RemediationPlan, secret: Optional[str] = None) -> bool:
+    def verify_plan_signature(plan: RemediationPlan, secret: str | None = None) -> bool:
         """Verify both SHA-256 digest and HMAC-SHA256 signature of a remediation plan against tampering."""
         if not plan.plan_signature or not plan.plan_digest:
             return False
@@ -207,9 +214,9 @@ class GuardrailEngine:
 
     @staticmethod
     def filter_by_risk(
-        actions: List[RemediationActionItem],
-        max_acceptable_risk: Optional[int] = None,
-    ) -> List[RemediationActionItem]:
+        actions: list[RemediationActionItem],
+        max_acceptable_risk: int | None = None,
+    ) -> list[RemediationActionItem]:
         """Filter out any actions exceeding the maximum acceptable risk threshold."""
         threshold = max_acceptable_risk if max_acceptable_risk is not None else 5
         return [a for a in actions if a.safety_risk_score <= threshold]

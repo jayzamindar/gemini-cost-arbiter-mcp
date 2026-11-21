@@ -7,11 +7,13 @@ import hmac
 import json
 import logging
 import re
-from typing import Any, AsyncGenerator, Dict, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
+
+import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
-import uvicorn
 
 from gemini_cost_arbiter.engine import GeminiCostArbiterEngine
 
@@ -23,7 +25,7 @@ class SensitiveQueryParamFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         if isinstance(record.args, tuple):
-            new_args = []
+            new_args: list[object] = []
             for arg in record.args:
                 if isinstance(arg, str):
                     new_args.append(re.sub(r"apiKey=[^&\s\"]+", "apiKey=***", arg))
@@ -40,8 +42,8 @@ logging.getLogger("uvicorn.access").addFilter(SensitiveQueryParamFilter())
 
 
 def create_sse_app(
-    engine: Optional[GeminiCostArbiterEngine] = None,
-    api_key: Optional[str] = None,
+    engine: GeminiCostArbiterEngine | None = None,
+    api_key: str | None = None,
 ) -> FastAPI:
     """Create FastAPI application exposing MCP endpoints over SSE and HTTP POST with optional auth."""
     app = FastAPI(
@@ -51,7 +53,7 @@ def create_sse_app(
     )
     arbiter_engine = engine or GeminiCostArbiterEngine()
     effective_api_key = api_key or arbiter_engine.config.mcp_api_key
-    message_queues: Dict[str, asyncio.Queue] = {}
+    message_queues: dict[str, asyncio.Queue[dict[str, Any]]] = {}
 
     def _verify_auth(request: Request) -> None:
         """Enforce timing-safe authentication and fail-closed security in production."""
@@ -86,7 +88,7 @@ def create_sse_app(
         )
 
     @app.get("/health")
-    async def health() -> Dict[str, str]:
+    async def health() -> dict[str, str]:
         """Unauthenticated healthcheck probe for container orchestration."""
         return {"status": "healthy", "service": "gemini-cost-arbiter-mcp"}
 
@@ -95,10 +97,10 @@ def create_sse_app(
         """SSE stream for receiving JSON-RPC notifications and tool call results."""
         _verify_auth(request)
         client_id = str(id(request))
-        queue: asyncio.Queue = asyncio.Queue()
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         message_queues[client_id] = queue
 
-        async def event_generator() -> AsyncGenerator[Dict[str, str], None]:
+        async def event_generator() -> AsyncGenerator[dict[str, str]]:
             try:
                 # Send endpoint discovery event according to MCP SSE specification
                 yield {
@@ -111,7 +113,7 @@ def create_sse_app(
                     try:
                         msg = await asyncio.wait_for(queue.get(), timeout=15.0)
                         yield {"event": "message", "data": json.dumps(msg)}
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         yield {"event": "ping", "data": "{}"}
             finally:
                 message_queues.pop(client_id, None)
@@ -141,8 +143,8 @@ def create_sse_app(
 def run_sse(
     host: str = "127.0.0.1",
     port: int = 8000,
-    engine: Optional[GeminiCostArbiterEngine] = None,
-    api_key: Optional[str] = None,
+    engine: GeminiCostArbiterEngine | None = None,
+    api_key: str | None = None,
 ) -> None:
     """Launch Uvicorn webserver hosting the MCP SSE endpoints."""
     app = create_sse_app(engine=engine, api_key=api_key)

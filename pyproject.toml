@@ -48,6 +48,8 @@ dependencies = [
 test = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
+    "pytest-timeout>=2.3.1",
     "respx>=0.22.0",
 ]
 dev = [
@@ -65,6 +67,8 @@ include = ["gemini_cost_arbiter*", "app*"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+timeout = 10
+timeout_method = "thread"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 python_files = ["test_*.py"]
@@ -73,6 +77,12 @@ python_functions = ["test_*"]
 filterwarnings = [
     "ignore::DeprecationWarning:pytest_asyncio.*",
 ]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+ignore_missing_imports = false
+warn_return_any = true
 
 [tool.ruff]
 line-length = 120

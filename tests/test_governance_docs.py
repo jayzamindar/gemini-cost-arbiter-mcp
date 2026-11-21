@@ -57,11 +57,17 @@ def test_readme_master_navigation_hub_has_zero_broken_links() -> None:
 
 
 def test_build_prompts_bootstrap_and_fail_closed_gate() -> None:
-    """Verify BUILD_PROMPTS.md contains BUILD-PROMPT-01..10 with bootstrap headers."""
+    """Verify BUILD_PROMPTS.md contains BUILD-PROMPT-01..10 with 3-line bootstrap headers."""
     text = (REPO_ROOT / "BUILD_PROMPTS.md").read_text(encoding="utf-8")
+    persona_line = (
+        "Act as a Principal AI Security Architect and Staff Python SRE executing "
+        "Tier-1 production remediation on `gemini-cost-arbiter-mcp`."
+    )
+    assert text.count(persona_line) == 10
     for idx in range(1, 11):
         prompt_id = f"BUILD-PROMPT-{idx:02d}"
         assert prompt_id in text, f"Missing {prompt_id} in BUILD_PROMPTS.md"
+        assert f"Execute ONLY this task (`{prompt_id}`)" in text
     assert "Auto-Commit & Fail-Closed Verification Gate" in text
     assert "GATE FAILURE" in text
 

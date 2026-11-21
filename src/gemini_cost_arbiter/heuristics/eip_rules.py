@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Optional
 from gemini_cost_arbiter.models.remediation import ActionType, RemediationActionItem
 from gemini_cost_arbiter.models.telemetry import CloudResourceType, EIPMetrics
 
 
-def evaluate_elastic_ip(eip: EIPMetrics) -> Optional[RemediationActionItem]:
+def evaluate_elastic_ip(eip: EIPMetrics) -> RemediationActionItem | None:
     """Evaluate Elastic IP for unassociated idle allocation charges."""
     if not eip.is_associated and eip.days_idle >= 7:
         savings = round(eip.monthly_spend_usd, 2)

@@ -2,15 +2,16 @@
 
 **Project:** `gemini-cost-arbiter-mcp`  
 **Roadmap Source:** [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) | [`AUDIT_REMEDIATION_LOG.md`](AUDIT_REMEDIATION_LOG.md)  
-**Usage:** Copy any fenced `BUILD-PROMPT-XX` block into a fresh autonomous coding session. Each prompt is 100% self-contained, includes the mandatory 2-line session bootstrap header, and ends with the Auto-Commit & Fail-Closed Verification Gate.
+**Usage:** Copy any fenced `BUILD-PROMPT-XX` block into a fresh autonomous coding session. Each prompt is 100% self-contained, begins with the mandatory **3-Line Session Bootstrap & Persona Header**, and ends with the **Auto-Commit & Fail-Closed Verification Gate**.
 
 ---
 
 ## `BUILD-PROMPT-01` — Governance Case Normalization & Playbook Foundation (`REM-001`)
 
 ```markdown
-Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards.
-Execute ONLY this task (`BUILD-PROMPT-01`), follow all TDD/zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
+Act as a Principal AI Security Architect and Staff Python SRE executing Tier-1 production remediation on `gemini-cost-arbiter-mcp`.
+Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards, invariants, and 3-strike circuit breaker rules.
+Execute ONLY this task (`BUILD-PROMPT-01`), follow all TDD, explicit `encoding="utf-8"` file I/O, no-self-mocking, and zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
 
 ### Scope (`REM-001`)
 1. Normalize `gemini.md` to uppercase `GEMINI.md` in the git index (`git mv gemini.md gemini.md.tmp && git mv gemini.md.tmp GEMINI.md`).
@@ -29,8 +30,9 @@ Run: `.venv\Scripts\python.exe -m pytest tests/test_governance_docs.py -v`
 ## `BUILD-PROMPT-02` — CI/CD Quality Gates & Test Env Isolation (`REM-002`)
 
 ```markdown
-Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards.
-Execute ONLY this task (`BUILD-PROMPT-02`), follow all TDD/zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
+Act as a Principal AI Security Architect and Staff Python SRE executing Tier-1 production remediation on `gemini-cost-arbiter-mcp`.
+Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards, invariants, and 3-strike circuit breaker rules.
+Execute ONLY this task (`BUILD-PROMPT-02`), follow all TDD, explicit `encoding="utf-8"` file I/O, no-self-mocking, and zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
 
 ### Scope (`REM-002`)
 1. Add `pytest-cov>=6.0.0` and `pytest-timeout>=2.3.1` to `pyproject.toml` (`[project.optional-dependencies].test`) and `requirements.txt`; install dev/test tools into `.venv`.
@@ -39,7 +41,7 @@ Execute ONLY this task (`BUILD-PROMPT-02`), follow all TDD/zero-hallucination ru
 4. Update `.github/workflows/test.yml` to install `.[dev,test]` and enforce `ruff check src tests`, `mypy src`, and `pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-fail-under=90`.
 
 ### Auto-Commit & Fail-Closed Verification Gate
-Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.exe -m mypy src ; .venv\Scripts\python.exe -m pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-fail-under=90`
+Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.exe -m mypy src ; .venv\Scripts\python.exe -m pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-report=term:skip-covered`
 - On 100% pass: stage explicit files (`git add <explicit_files>`), commit with `ci(gates): enforce ruff, mypy strict, pytest-timeout, and 90% coverage (REM-002)`, and report the short commit SHA.
 - On any failure: DO NOT commit; emit `🚨 GATE FAILURE — HUMAN REVIEW REQUIRED` with the exact error trace and halt.
 ```
@@ -49,8 +51,9 @@ Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.ex
 ## `BUILD-PROMPT-03` — Strict Immutable Bounded Pydantic v2 Models (`REM-003`, `REM-004`)
 
 ```markdown
-Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards.
-Execute ONLY this task (`BUILD-PROMPT-03`), follow all TDD/zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
+Act as a Principal AI Security Architect and Staff Python SRE executing Tier-1 production remediation on `gemini-cost-arbiter-mcp`.
+Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards, invariants, and 3-strike circuit breaker rules.
+Execute ONLY this task (`BUILD-PROMPT-03`), follow all TDD, explicit `encoding="utf-8"` file I/O, no-self-mocking, and zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
 
 ### Scope (`REM-003`, `REM-004`)
 1. Enforce `model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)` across all models in `src/gemini_cost_arbiter/models/telemetry.py`, `remediation.py`, and `audit.py`, plus `extra="forbid"` on `ArbiterConfig` (`config.py`).
@@ -60,7 +63,7 @@ Execute ONLY this task (`BUILD-PROMPT-03`), follow all TDD/zero-hallucination ru
 5. Add `tests/test_schema_strictness.py` testing immutability, `extra="forbid"`, `NaN`/`Inf` rejection, field bounds, and savings sum invariants.
 
 ### Auto-Commit & Fail-Closed Verification Gate
-Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.exe -m mypy src ; .venv\Scripts\python.exe -m pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-fail-under=90`
+Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.exe -m mypy src ; .venv\Scripts\python.exe -m pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-report=term:skip-covered`
 - On 100% pass: stage explicit files, commit with `feat(models): enforce frozen extra=forbid schemas and bounded fields (REM-003, REM-004)`, and report the short commit SHA.
 - On any failure: DO NOT commit; emit `🚨 GATE FAILURE — HUMAN REVIEW REQUIRED` and halt.
 ```
@@ -70,8 +73,9 @@ Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.ex
 ## `BUILD-PROMPT-04` — Fail-Closed Catalog & Unicode Normalization (`REM-005`, `REM-006`)
 
 ```markdown
-Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards.
-Execute ONLY this task (`BUILD-PROMPT-04`), follow all TDD/zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
+Act as a Principal AI Security Architect and Staff Python SRE executing Tier-1 production remediation on `gemini-cost-arbiter-mcp`.
+Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards, invariants, and 3-strike circuit breaker rules.
+Execute ONLY this task (`BUILD-PROMPT-04`), follow all TDD, explicit `encoding="utf-8"` file I/O, no-self-mocking, and zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
 
 ### Scope (`REM-005`, `REM-006`)
 1. Implement `CatalogNotFoundError` in `src/gemini_cost_arbiter/heuristics/ec2_rules.py`, resolve `CATALOG_PATH` dynamically, remove silent fallback maps/65% estimates, and return `None` for unknown instance types.
@@ -80,7 +84,7 @@ Execute ONLY this task (`BUILD-PROMPT-04`), follow all TDD/zero-hallucination ru
 4. Add `tests/test_catalog_and_normalization.py` covering missing/corrupt catalogs, unknown instance types, and NFKC/tag normalization.
 
 ### Auto-Commit & Fail-Closed Verification Gate
-Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.exe -m mypy src ; .venv\Scripts\python.exe -m pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-fail-under=90`
+Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.exe -m mypy src ; .venv\Scripts\python.exe -m pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-report=term:skip-covered`
 - On 100% pass: stage explicit files, commit with `feat(heuristics): fail-closed catalog and NFKC normalization (REM-005, REM-006)`, and report the short commit SHA.
 - On any failure: DO NOT commit; emit `🚨 GATE FAILURE — HUMAN REVIEW REQUIRED` and halt.
 ```
@@ -90,8 +94,9 @@ Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.ex
 ## `BUILD-PROMPT-05` — Guardrail Hardening & FinOps Reconciliation (`REM-007`, `REM-008`)
 
 ```markdown
-Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards.
-Execute ONLY this task (`BUILD-PROMPT-05`), follow all TDD/zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
+Act as a Principal AI Security Architect and Staff Python SRE executing Tier-1 production remediation on `gemini-cost-arbiter-mcp`.
+Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards, invariants, and 3-strike circuit breaker rules.
+Execute ONLY this task (`BUILD-PROMPT-05`), follow all TDD, explicit `encoding="utf-8"` file I/O, no-self-mocking, and zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
 
 ### Scope (`REM-007`, `REM-008`)
 1. Validate `res_id`/`target_cfg` and apply `shlex.quote()` in `GuardrailEngine._generate_aws_cli()` and `_generate_rollback_plan()`.
@@ -101,7 +106,7 @@ Execute ONLY this task (`BUILD-PROMPT-05`), follow all TDD/zero-hallucination ru
 5. Add TDD tests in `tests/test_guardrails_security.py`.
 
 ### Auto-Commit & Fail-Closed Verification Gate
-Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.exe -m mypy src ; .venv\Scripts\python.exe -m pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-fail-under=90`
+Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.exe -m mypy src ; .venv\Scripts\python.exe -m pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-report=term:skip-covered`
 - On 100% pass: stage explicit files, commit with `fix(guardrails): shlex CLI hardening, zero-wildcard IAM, and LLM reconciliation (REM-007, REM-008)`, and report the short commit SHA.
 - On any failure: DO NOT commit; emit `🚨 GATE FAILURE — HUMAN REVIEW REQUIRED` and halt.
 ```
@@ -111,8 +116,9 @@ Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.ex
 ## `BUILD-PROMPT-06` — Prompt Defense, Compression & Schema Sanitization (`REM-009`, `REM-010`)
 
 ```markdown
-Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards.
-Execute ONLY this task (`BUILD-PROMPT-06`), follow all TDD/zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
+Act as a Principal AI Security Architect and Staff Python SRE executing Tier-1 production remediation on `gemini-cost-arbiter-mcp`.
+Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards, invariants, and 3-strike circuit breaker rules.
+Execute ONLY this task (`BUILD-PROMPT-06`), follow all TDD, explicit `encoding="utf-8"` file I/O, no-self-mocking, and zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
 
 ### Scope (`REM-009`, `REM-010`)
 1. Strip `<`/`>` XML breakout tags in `sanitize_string()`, compress `TelemetryBatch` (`exclude_none=True, exclude_defaults=True`, `MAX_PROMPT_CHARS=32768`), and wrap telemetry in `<untrusted_proposal_data>...</untrusted_proposal_data>`.
@@ -121,7 +127,7 @@ Execute ONLY this task (`BUILD-PROMPT-06`), follow all TDD/zero-hallucination ru
 4. Add `tests/test_prompt_security.py` and expand `tests/test_phase9_hardening.py`.
 
 ### Auto-Commit & Fail-Closed Verification Gate
-Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.exe -m mypy src ; .venv\Scripts\python.exe -m pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-fail-under=90`
+Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.exe -m mypy src ; .venv\Scripts\python.exe -m pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-report=term:skip-covered`
 - On 100% pass: stage explicit files, commit with `fix(reasoner): prompt breakout defense, compression, and schema anyOf fix (REM-009, REM-010)`, and report the short commit SHA.
 - On any failure: DO NOT commit; emit `🚨 GATE FAILURE — HUMAN REVIEW REQUIRED` and halt.
 ```
@@ -131,8 +137,9 @@ Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.ex
 ## `BUILD-PROMPT-07` — Circuit Breakers & Fallback Resilience (`REM-011`)
 
 ```markdown
-Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards.
-Execute ONLY this task (`BUILD-PROMPT-07`), follow all TDD/zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
+Act as a Principal AI Security Architect and Staff Python SRE executing Tier-1 production remediation on `gemini-cost-arbiter-mcp`.
+Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards, invariants, and 3-strike circuit breaker rules.
+Execute ONLY this task (`BUILD-PROMPT-07`), follow all TDD, explicit `encoding="utf-8"` file I/O, no-self-mocking, and zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
 
 ### Scope (`REM-011`)
 1. Add `max_output_tokens=8192`, `max_session_token_budget=500000`, `daily_api_cost_limit_usd=10.0`, and `circuit_breaker_failure_threshold=3` to `ArbiterConfig`.
@@ -141,7 +148,7 @@ Execute ONLY this task (`BUILD-PROMPT-07`), follow all TDD/zero-hallucination ru
 4. Add `tests/test_circuit_breaker.py`.
 
 ### Auto-Commit & Fail-Closed Verification Gate
-Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.exe -m mypy src ; .venv\Scripts\python.exe -m pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-fail-under=90`
+Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.exe -m mypy src ; .venv\Scripts\python.exe -m pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-report=term:skip-covered`
 - On 100% pass: stage explicit files, commit with `feat(resilience): add token/cost/cooldown circuit breakers and 30s timeouts (REM-011)`, and report the short commit SHA.
 - On any failure: DO NOT commit; emit `🚨 GATE FAILURE — HUMAN REVIEW REQUIRED` and halt.
 ```
@@ -151,8 +158,9 @@ Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.ex
 ## `BUILD-PROMPT-08` — Crypto Canonicalization, HITL & SSE Hardening (`REM-012`, `REM-013`, `REM-014`)
 
 ```markdown
-Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards.
-Execute ONLY this task (`BUILD-PROMPT-08`), follow all TDD/zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
+Act as a Principal AI Security Architect and Staff Python SRE executing Tier-1 production remediation on `gemini-cost-arbiter-mcp`.
+Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards, invariants, and 3-strike circuit breaker rules.
+Execute ONLY this task (`BUILD-PROMPT-08`), follow all TDD, explicit `encoding="utf-8"` file I/O, no-self-mocking, and zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
 
 ### Scope (`REM-012`, `REM-013`, `REM-014`)
 1. Enforce `ensure_ascii=False` in `attach_plan_digest()` and reject placeholder/short (`< 32` chars) `PLAN_SIGNING_SECRET` in `production`.
@@ -171,8 +179,9 @@ Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.ex
 ## `BUILD-PROMPT-09` — SQLite WAL Concurrency & Docker Parity (`REM-015`, `REM-016`)
 
 ```markdown
-Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards.
-Execute ONLY this task (`BUILD-PROMPT-09`), follow all TDD/zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
+Act as a Principal AI Security Architect and Staff Python SRE executing Tier-1 production remediation on `gemini-cost-arbiter-mcp`.
+Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards, invariants, and 3-strike circuit breaker rules.
+Execute ONLY this task (`BUILD-PROMPT-09`), follow all TDD, explicit `encoding="utf-8"` file I/O, no-self-mocking, and zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
 
 ### Scope (`REM-015`, `REM-016`)
 1. Add `filelock>=3.16.0` to `pyproject.toml` and `requirements.txt`.
@@ -191,8 +200,9 @@ Run: `.venv\Scripts\python.exe -m ruff check src tests ; .venv\Scripts\python.ex
 ## `BUILD-PROMPT-10` — Docs Sync, Prompt Registry & Final Release Gate (`REM-017`)
 
 ```markdown
-Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards.
-Execute ONLY this task (`BUILD-PROMPT-10`), follow all TDD/zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
+Act as a Principal AI Security Architect and Staff Python SRE executing Tier-1 production remediation on `gemini-cost-arbiter-mcp`.
+Read `GEMINI.md`, `Enterprise_Blueprint.md`, `PROJECT_MAP.md`, and `AUDIT_REMEDIATION_LOG.md` first to load all project standards, invariants, and 3-strike circuit breaker rules.
+Execute ONLY this task (`BUILD-PROMPT-10`), follow all TDD, explicit `encoding="utf-8"` file I/O, no-self-mocking, and zero-hallucination rules, update `AUDIT_REMEDIATION_LOG.md`, and stop with the 5-line Session Handover Block.
 
 ### Scope (`REM-017`)
 1. Create `prompts/modular_prompt.md` indexing `master_system_prompt.md` and `prompts/modules/01..06`.

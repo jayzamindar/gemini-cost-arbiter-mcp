@@ -3,31 +3,34 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import sqlite3
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
 from gemini_cost_arbiter.models.audit import FinOpsAuditSummary
 
 
 class FinOpsLedger:
     """Thread-safe audit ledger with optional SQLite persistence and JSON export."""
 
-    def __init__(self, db_path: Optional[str] = None) -> None:
+    def __init__(self, db_path: str | None = None) -> None:
         self.db_path = db_path
-        self.entries: List[Dict[str, Any]] = []
+        self.entries: list[dict[str, Any]] = []
         self._total_batches_processed: int = 0
         self._total_resources_analyzed: int = 0
         self._cumulative_waste_identified_usd: float = 0.0
         self._cumulative_projected_savings_usd: float = 0.0
         self._remediations_generated_count: int = 0
-        self._last_updated: str = datetime.now(timezone.utc).isoformat()
+        self._last_updated: str = datetime.now(UTC).isoformat()
 
         if self.db_path:
             self._init_sqlite()
 
     def _init_sqlite(self) -> None:
         """Initialize SQLite database tables and restore cumulative metrics."""
+        if self.db_path is None:
+            return
         conn = sqlite3.connect(self.db_path)
         try:
             with conn:
@@ -56,6 +59,8 @@ class FinOpsLedger:
 
     def _load_from_sqlite(self) -> None:
         """Load historical entries and counters from SQLite."""
+        if self.db_path is None:
+            return
         conn = sqlite3.connect(self.db_path)
         try:
             cursor = conn.cursor()
@@ -79,24 +84,24 @@ class FinOpsLedger:
                 self._remediations_generated_count += len(plan.get("actions", []))
 
             if self.entries:
-                self._last_updated = self.entries[-1].get("created_at", datetime.now(timezone.utc).isoformat())
+                self._last_updated = self.entries[-1].get("created_at", datetime.now(UTC).isoformat())
         finally:
             conn.close()
 
-    def record_plan(self, plan_dict: Dict[str, Any], resource_count: int) -> None:
+    def record_plan(self, plan_dict: dict[str, Any], resource_count: int) -> None:
         """Record an evaluated remediation plan in the ledger and persist to SQLite if enabled."""
         self.entries.append(plan_dict)
         savings = float(plan_dict.get("total_projected_monthly_savings_usd", 0.0))
         actions_count = len(plan_dict.get("actions", []))
         plan_id = str(plan_dict.get("plan_id", ""))
-        created_at = str(plan_dict.get("created_at", datetime.now(timezone.utc).isoformat()))
+        created_at = str(plan_dict.get("created_at", datetime.now(UTC).isoformat()))
 
         self._total_batches_processed += 1
         self._total_resources_analyzed += resource_count
         self._cumulative_waste_identified_usd += savings
         self._cumulative_projected_savings_usd += savings
         self._remediations_generated_count += actions_count
-        self._last_updated = datetime.now(timezone.utc).isoformat()
+        self._last_updated = datetime.now(UTC).isoformat()
 
         if self.db_path:
             conn = sqlite3.connect(self.db_path)
@@ -131,7 +136,7 @@ class FinOpsLedger:
         self._cumulative_waste_identified_usd = 0.0
         self._cumulative_projected_savings_usd = 0.0
         self._remediations_generated_count = 0
-        self._last_updated = datetime.now(timezone.utc).isoformat()
+        self._last_updated = datetime.now(UTC).isoformat()
 
         if self.db_path:
             conn = sqlite3.connect(self.db_path)

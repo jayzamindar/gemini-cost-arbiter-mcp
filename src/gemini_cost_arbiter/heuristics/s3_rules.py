@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Optional
 from gemini_cost_arbiter.models.remediation import ActionType, RemediationActionItem
 from gemini_cost_arbiter.models.telemetry import CloudResourceType, S3Metrics
 
 
-def evaluate_s3_bucket(s3: S3Metrics) -> Optional[RemediationActionItem]:
+def evaluate_s3_bucket(s3: S3Metrics) -> RemediationActionItem | None:
     """Evaluate S3 bucket for cold storage optimization opportunities with small-object guardrail."""
     # Small-Object Economics Guardrail: S3 Intelligent-Tiering ignores objects < 128 KB
     # and charges $0.0025 per 1,000 objects/month. Buckets with small avg object size cost MORE.

@@ -1,9 +1,11 @@
 """Tests validating secondary multi-model fallback via OpenRouter."""
 
 import json
+
+import httpx
 import pytest
 import respx
-import httpx
+
 from gemini_cost_arbiter.config import ArbiterConfig
 from gemini_cost_arbiter.engine import GeminiCostArbiterEngine
 from gemini_cost_arbiter.models.telemetry import EC2Metrics, TelemetryBatch
@@ -32,22 +34,24 @@ async def test_openrouter_secondary_fallback_flow() -> None:
         "choices": [
             {
                 "message": {
-                    "content": json.dumps({
-                        "actions": [
-                            {
-                                "resource_id": "i-fallback-test",
-                                "resource_type": "EC2",
-                                "action_type": "rightsize_instance",
-                                "target_configuration": "t4g.large",
-                                "current_monthly_spend_usd": 250.0,
-                                "projected_monthly_spend_usd": 75.0,
-                                "projected_monthly_savings_usd": 175.0,
-                                "safety_risk_score": 3,
-                                "reasoning_rationale": "OpenRouter Qwen 2.5 Coder identified idle instance.",
-                                "system_mitigations": ["Automated snapshot before resizing"],
-                            }
-                        ]
-                    })
+                    "content": json.dumps(
+                        {
+                            "actions": [
+                                {
+                                    "resource_id": "i-fallback-test",
+                                    "resource_type": "EC2",
+                                    "action_type": "rightsize_instance",
+                                    "target_configuration": "t4g.large",
+                                    "current_monthly_spend_usd": 250.0,
+                                    "projected_monthly_spend_usd": 75.0,
+                                    "projected_monthly_savings_usd": 175.0,
+                                    "safety_risk_score": 3,
+                                    "reasoning_rationale": "OpenRouter Qwen 2.5 Coder identified idle instance.",
+                                    "system_mitigations": ["Automated snapshot before resizing"],
+                                }
+                            ]
+                        }
+                    )
                 }
             }
         ]

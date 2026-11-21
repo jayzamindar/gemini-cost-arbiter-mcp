@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
 from gemini_cost_arbiter.models.remediation import ActionType, RemediationActionItem
 from gemini_cost_arbiter.models.telemetry import CloudResourceType, RDSMetrics
 
 
-def evaluate_rds_instance(rds: RDSMetrics) -> Optional[RemediationActionItem]:
+def evaluate_rds_instance(rds: RDSMetrics) -> RemediationActionItem | None:
     """Evaluate RDS instance for zero-connection idle state."""
     if rds.active_connections_avg == 0.0:
         is_prod = rds.environment.lower() == "production"
@@ -26,7 +25,7 @@ def evaluate_rds_instance(rds: RDSMetrics) -> Optional[RemediationActionItem]:
             post_spend = round(rds.monthly_spend_usd - savings, 2)
             rationale_suffix = " Stopping idle database with prior snapshot eliminates running compute costs."
 
-        mitigations: List[str] = [
+        mitigations: list[str] = [
             f"Execute manual RDS final snapshot ('snapshot-pre-stop-{rds.resource_id}')",
             "Verify no client applications or lambdas have active DNS bindings",
             "Retain automated backups for 30 days prior to stopping",

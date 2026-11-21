@@ -1,9 +1,11 @@
 """Tests validating Gemini 3.8 Flash High thinking budget payload serialization."""
 
 import json
+
+import httpx
 import pytest
 import respx
-import httpx
+
 from gemini_cost_arbiter.config import ArbiterConfig
 from gemini_cost_arbiter.models.telemetry import EC2Metrics, TelemetryBatch
 from gemini_cost_arbiter.reasoner.client import GeminiReasonerClient
@@ -27,22 +29,24 @@ async def test_gemini_thinking_budget_in_payload() -> None:
                 "content": {
                     "parts": [
                         {
-                            "text": json.dumps({
-                                "actions": [
-                                    {
-                                        "resource_id": "i-test",
-                                        "resource_type": "EC2",
-                                        "action_type": "rightsize_instance",
-                                        "target_configuration": "t4g.xlarge",
-                                        "current_monthly_spend_usd": 300.0,
-                                        "projected_monthly_spend_usd": 100.0,
-                                        "projected_monthly_savings_usd": 200.0,
-                                        "safety_risk_score": 3,
-                                        "reasoning_rationale": "Rightsizing underutilized instance.",
-                                        "system_mitigations": ["Pre-execution AMI snapshot"],
-                                    }
-                                ]
-                            })
+                            "text": json.dumps(
+                                {
+                                    "actions": [
+                                        {
+                                            "resource_id": "i-test",
+                                            "resource_type": "EC2",
+                                            "action_type": "rightsize_instance",
+                                            "target_configuration": "t4g.xlarge",
+                                            "current_monthly_spend_usd": 300.0,
+                                            "projected_monthly_spend_usd": 100.0,
+                                            "projected_monthly_savings_usd": 200.0,
+                                            "safety_risk_score": 3,
+                                            "reasoning_rationale": "Rightsizing underutilized instance.",
+                                            "system_mitigations": ["Pre-execution AMI snapshot"],
+                                        }
+                                    ]
+                                }
+                            )
                         }
                     ]
                 }
@@ -50,9 +54,9 @@ async def test_gemini_thinking_budget_in_payload() -> None:
         ]
     }
 
-    route = respx.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-high:generateContent").mock(
-        return_value=httpx.Response(200, json=mocked_response)
-    )
+    route = respx.post(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-high:generateContent"
+    ).mock(return_value=httpx.Response(200, json=mocked_response))
 
     batch = TelemetryBatch(
         ec2_instances=[

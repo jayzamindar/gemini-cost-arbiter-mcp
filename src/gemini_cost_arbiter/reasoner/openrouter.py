@@ -6,8 +6,7 @@ import json
 import logging
 import re
 import uuid
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 
 import httpx
 
@@ -23,10 +22,10 @@ logger = logging.getLogger("gemini_cost_arbiter.openrouter")
 class OpenRouterFallbackClient:
     """Secondary fallback LLM client (e.g. Qwen 2.5 Coder via OpenRouter)."""
 
-    def __init__(self, config: ArbiterConfig, http_client: Optional[httpx.AsyncClient] = None) -> None:
+    def __init__(self, config: ArbiterConfig, http_client: httpx.AsyncClient | None = None) -> None:
         self.config = config
         self._custom_client = http_client
-        self._internal_client: Optional[httpx.AsyncClient] = None
+        self._internal_client: httpx.AsyncClient | None = None
 
     async def get_client(self) -> httpx.AsyncClient:
         """Retrieve active HTTP client."""
@@ -48,7 +47,7 @@ class OpenRouterFallbackClient:
             await self._internal_client.aclose()
             self._internal_client = None
 
-    async def generate_plan(self, batch: TelemetryBatch) -> Optional[RemediationPlan]:
+    async def generate_plan(self, batch: TelemetryBatch) -> RemediationPlan | None:
         """Dispatch evaluation to OpenRouter OpenAI-compatible endpoint."""
         if not self.config.openrouter_api_key:
             return None
@@ -91,7 +90,7 @@ class OpenRouterFallbackClient:
             cleaned_text = cleaned_text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
 
         parsed = json.loads(cleaned_text)
-        actions: List[RemediationActionItem] = []
+        actions: list[RemediationActionItem] = []
         raw_actions = parsed.get("actions", []) if isinstance(parsed, dict) else []
 
         for item in raw_actions:
@@ -107,7 +106,7 @@ class OpenRouterFallbackClient:
 
         return RemediationPlan(
             plan_id=str(uuid.uuid4()),
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
             actions=actions,
             total_current_monthly_spend_usd=current_spend,
             total_projected_monthly_spend_usd=projected_spend,

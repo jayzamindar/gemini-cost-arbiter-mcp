@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
 from gemini_cost_arbiter.models.remediation import ActionType, RemediationActionItem
 from gemini_cost_arbiter.models.telemetry import CloudResourceType, EBSMetrics
 
 
-def evaluate_ebs_volume(ebs: EBSMetrics) -> Optional[RemediationActionItem]:
+def evaluate_ebs_volume(ebs: EBSMetrics) -> RemediationActionItem | None:
     """Evaluate EBS volume for orphan/detached storage waste."""
     if not ebs.is_attached and ebs.days_unattached >= 30:
         is_prod = ebs.environment.lower() == "production"
@@ -16,13 +15,15 @@ def evaluate_ebs_volume(ebs: EBSMetrics) -> Optional[RemediationActionItem]:
         savings = round(ebs.monthly_spend_usd, 2)
         post_spend = 0.0
 
-        mitigations: List[str] = []
+        mitigations: list[str] = []
         if risk >= 3:
-            mitigations.extend([
-                f"Create pre-deletion EBS snapshot ('snap-pre-delete-{ebs.resource_id}')",
-                "Verify volume tags do not indicate static disaster recovery state",
-                "Retain automated snapshot for 90 days before final expiration",
-            ])
+            mitigations.extend(
+                [
+                    f"Create pre-deletion EBS snapshot ('snap-pre-delete-{ebs.resource_id}')",
+                    "Verify volume tags do not indicate static disaster recovery state",
+                    "Retain automated snapshot for 90 days before final expiration",
+                ]
+            )
 
         return RemediationActionItem(
             resource_id=ebs.resource_id,

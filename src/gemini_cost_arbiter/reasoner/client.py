@@ -8,8 +8,8 @@ import json
 import logging
 import random
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any, cast
 
 import httpx
 
@@ -34,7 +34,7 @@ ALLOWED_GEMINI_FIELDS = {
 }
 
 
-def clean_gemini_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
+def clean_gemini_schema(schema: dict[str, Any]) -> dict[str, Any]:
     """Recursively dereference and sanitize Pydantic v2 JSON Schema for Gemini REST API compatibility.
 
     Enforces an explicit allowlist of valid google.ai.generativelanguage.v1beta.Schema fields,
@@ -45,7 +45,7 @@ def clean_gemini_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
     schema_copy = copy.deepcopy(schema)
     defs = schema_copy.pop("$defs", {})
 
-    def _inline_refs(node: Any, seen_refs: Optional[set] = None) -> Any:
+    def _inline_refs(node: Any, seen_refs: set[str] | None = None) -> Any:
         if seen_refs is None:
             seen_refs = set()
 
@@ -81,7 +81,7 @@ def clean_gemini_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
                                 collapsed[k] = v
                         return collapsed
 
-            cleaned = {}
+            cleaned: dict[str, Any] = {}
             for k, v in node.items():
                 if k not in ALLOWED_GEMINI_FIELDS:
                     continue
@@ -107,17 +107,17 @@ def clean_gemini_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
             return [_inline_refs(item, seen_refs) for item in node]
         return node
 
-    return _inline_refs(schema_copy)
+    return cast(dict[str, Any], _inline_refs(schema_copy))
 
 
 class GeminiReasonerClient:
     """Client for Google Gemini 3.8 Flash High with thinking budget and constrained schema egress."""
 
-    def __init__(self, config: ArbiterConfig, http_client: Optional[httpx.AsyncClient] = None) -> None:
+    def __init__(self, config: ArbiterConfig, http_client: httpx.AsyncClient | None = None) -> None:
         self.config = config
         self._custom_client = http_client
-        self._internal_client: Optional[httpx.AsyncClient] = None
-        self.last_usage_metadata: Dict[str, Any] = {}
+        self._internal_client: httpx.AsyncClient | None = None
+        self.last_usage_metadata: dict[str, Any] = {}
 
     async def get_client(self) -> httpx.AsyncClient:
         """Retrieve active HTTP client."""
@@ -136,7 +136,7 @@ class GeminiReasonerClient:
             await self._internal_client.aclose()
             self._internal_client = None
 
-    async def generate_plan(self, batch: TelemetryBatch) -> Optional[RemediationPlan]:
+    async def generate_plan(self, batch: TelemetryBatch) -> RemediationPlan | None:
         """Dispatch telemetry evaluation to Gemini 3.8 Flash High with exponential retry."""
         client = await self.get_client()
         url = f"{self.config.gemini_base_url}/models/{self.config.model_name}:generateContent"
@@ -147,7 +147,7 @@ class GeminiReasonerClient:
         raw_schema = RemediationPlan.model_json_schema()
         cleaned_schema = clean_gemini_schema(raw_schema)
 
-        generation_config: Dict[str, Any] = {
+        generation_config: dict[str, Any] = {
             "temperature": 0.1,
             "maxOutputTokens": 16384,
             "responseMimeType": "application/json",
@@ -156,9 +156,7 @@ class GeminiReasonerClient:
 
         # Inject Thinking Budget for Gemini 3.8 Flash High if configured
         if self.config.thinking_budget > 0:
-            generation_config["thinkingConfig"] = {
-                "thinkingBudget": self.config.thinking_budget
-            }
+            generation_config["thinkingConfig"] = {"thinkingBudget": self.config.thinking_budget}
 
         payload = {
             "contents": [{"role": "user", "parts": [{"text": user_content}]}],
@@ -169,7 +167,7 @@ class GeminiReasonerClient:
         # Exponential backoff retry loop for transient HTTP 429 and 503 errors
         max_retries = 2
         backoff_base = 1.0
-        response: Optional[httpx.Response] = None
+        response: httpx.Response | None = None
 
         for attempt in range(max_retries + 1):
             try:
@@ -220,11 +218,9 @@ class GeminiReasonerClient:
         parsed = json.loads(clean_json)
 
         # Parse and enrich actions via GuardrailEngine
-        actions: List[RemediationActionItem] = []
+        actions: list[RemediationActionItem] = []
         raw_actions = (
-            parsed.get("actions", [])
-            if isinstance(parsed, dict)
-            else (parsed if isinstance(parsed, list) else [])
+            parsed.get("actions", []) if isinstance(parsed, dict) else (parsed if isinstance(parsed, list) else [])
         )
 
         for item in raw_actions:
@@ -240,7 +236,7 @@ class GeminiReasonerClient:
 
         raw_plan = RemediationPlan(
             plan_id=str(uuid.uuid4()),
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
             actions=actions,
             total_current_monthly_spend_usd=current_spend,
             total_projected_monthly_spend_usd=projected_spend,

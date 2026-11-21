@@ -90,9 +90,10 @@ If an identical test failure, type error, or build error persists across **3 con
 ## 6. Execution Protocol: `BUILD_PROMPTS.md` Auto-Commit & Fail-Closed Gate
 
 When executing any `BUILD-PROMPT-XX` from `BUILD_PROMPTS.md` / `Enterprise_Blueprint.md`:
-1. Begin with the mandatory 2-line session bootstrap header:
-   - `Read GEMINI.md, Enterprise_Blueprint.md, PROJECT_MAP.md, and AUDIT_REMEDIATION_LOG.md first to load all project standards.`
-   - `Execute ONLY this task (BUILD-PROMPT-XX), follow all TDD/zero-hallucination rules, update AUDIT_REMEDIATION_LOG.md, and stop with the 5-line Session Handover Block.`
+1. Begin with the mandatory **3-Line Session Bootstrap & Persona Header**:
+   - `Act as a Principal AI Security Architect and Staff Python SRE executing Tier-1 production remediation on \`gemini-cost-arbiter-mcp\`.`
+   - `Read \`GEMINI.md\`, \`Enterprise_Blueprint.md\`, \`PROJECT_MAP.md\`, and \`AUDIT_REMEDIATION_LOG.md\` first to load all project standards, invariants, and 3-strike circuit breaker rules.`
+   - `Execute ONLY this task (\`BUILD-PROMPT-XX\`), follow all TDD, explicit \`encoding="utf-8"\` file I/O, no-self-mocking, and zero-hallucination rules, update \`AUDIT_REMEDIATION_LOG.md\`, and stop with the 5-line Session Handover Block.`
 2. Implement only the scoped `REM-XXX` tickets for that build prompt.
 3. Run the **Stage 1 Quiet Verification Gate** (`ruff check src tests`, `mypy src`, `pytest -q --tb=short --timeout=10 --cov=src/gemini_cost_arbiter --cov-fail-under=90`).
 4. **Fail-Closed Gate:** If ANY check exits non-zero, DO NOT commit and emit `GATE FAILURE — HUMAN REVIEW REQUIRED` with the exact error trace.

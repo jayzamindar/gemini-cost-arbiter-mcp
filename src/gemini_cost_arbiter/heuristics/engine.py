@@ -6,8 +6,7 @@ Acts as high-availability fallback when upstream AI APIs are degraded or unavail
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import List
+from datetime import UTC, datetime
 
 from gemini_cost_arbiter.heuristics.ebs_rules import evaluate_ebs_volume
 from gemini_cost_arbiter.heuristics.ec2_rules import evaluate_ec2_instance
@@ -24,7 +23,7 @@ class DeterministicHeuristicEngine:
     @staticmethod
     def evaluate(batch: TelemetryBatch) -> RemediationPlan:
         """Run all heuristic rules against a telemetry batch."""
-        actions: List[RemediationActionItem] = []
+        actions: list[RemediationActionItem] = []
 
         # 1. EC2 Evaluation
         for ec2 in batch.ec2_instances:
@@ -64,7 +63,7 @@ class DeterministicHeuristicEngine:
 
         return RemediationPlan(
             plan_id=str(uuid.uuid4()),
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
             actions=actions,
             total_current_monthly_spend_usd=current_spend,
             total_projected_monthly_spend_usd=projected_spend,
