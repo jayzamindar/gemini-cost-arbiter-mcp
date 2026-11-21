@@ -6,7 +6,7 @@
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2.10%2B-green.svg)](https://docs.pydantic.dev/)
 [![Docker Image Size](https://img.shields.io/badge/docker-65.5MB-brightgreen.svg)](#-docker-packaging--local-execution)
 [![AWS Free Tier](https://img.shields.io/badge/AWS-100%25%20Free%20Tier-success.svg)](deploy/aws/)
-[![Tests Passing](https://img.shields.io/badge/tests-93%2F93%20passing-brightgreen.svg)](#3-run-the-automated-test-suite)
+[![Tests Passing](https://img.shields.io/badge/tests-94%2F94%20passing-brightgreen.svg)](#3-run-the-automated-test-suite)
 
 An enterprise-grade FinOps intelligence engine and **Model Context Protocol (MCP)** server. The arbiter continuously ingests multi-dimensional cloud utilization telemetry across AWS enterprise infrastructure (**EC2 compute, RDS databases, S3 storage, detached EBS volumes, and unassociated Elastic IPs**), detects systemic capacity and financial waste, and leverages **Google Gemini 3.8 Flash High** with configurable reasoning thinking budgets (and secondary multi-model fallback) to synthesize deterministic, schema-governed remediation execution payloads.
 
@@ -325,7 +325,7 @@ PLAN_SIGNING_SECRET=your_secure_random_hex_key_here
 ```
 
 ### 3. Run the Automated Test Suite
-Execute the **93-test** verification suite (`93.42%` coverage) validating schema integrity, contract boundaries, MCP handshakes, CLI runners, security guardrails, HITL anti-replay approval, SQLite WAL concurrency, real AWS pricing rates, deterministic templating, timing-safe fail-closed auth, and fallback loops:
+Execute the **94-test** verification suite (`93.42%` coverage) validating schema integrity, contract boundaries, MCP handshakes, CLI runners, security guardrails, HITL anti-replay approval, SQLite WAL concurrency, real AWS pricing rates, deterministic templating, timing-safe fail-closed auth, and fallback loops:
 
 ```bash
 python -m pytest -v
@@ -472,7 +472,6 @@ gemini-cost-arbiter-mcp/
 │   ├── README.md                    # PromptOps catalog & engineering guide
 │   ├── modular_prompt.md            # Unified PromptOps registry (Tier-0 + Modules 01-06)
 │   ├── master_system_prompt.md      # Tier-0 Master System Prompt & Global Ontology
-│   ├── code_generation.txt          # Engineering prompt history
 │   └── modules/                     # Specialized FinOps Cognitive Modules
 │       ├── 01_ec2_compute_reasoning.md
 │       ├── 02_rds_database_reasoning.md
@@ -492,7 +491,7 @@ gemini-cost-arbiter-mcp/
 │   ├── ledger/                      # Stateful FinOps audit tracking with SQLite persistence
 │   └── mcp/                         # MCP protocol dispatcher & servers (stdio and SSE)
 ├── app/                             # Zero-breaking-change backward compatibility shims
-└── tests/                           # 93-test verification suite (100% passing, 93%+ coverage)
+└── tests/                           # 94-test verification suite (100% passing, 93%+ coverage)
 ```
 
 ---

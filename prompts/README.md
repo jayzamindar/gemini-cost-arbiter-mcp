@@ -10,7 +10,6 @@ prompts/
 ├── README.md                               # PromptOps Catalog & Governance Guide (This file)
 ├── modular_prompt.md                       # Unified PromptOps Registry indexing Tier-0 & Modules 01-06
 ├── master_system_prompt.md                 # Tier-0 Master System Prompt & Global Ontology
-├── code_generation.txt                     # Legacy architectural design prompt history
 └── modules/                                # Specialized FinOps Cognitive Modules
     ├── 01_ec2_compute_reasoning.md         # EC2 CPU p95/avg, RAM, and Graviton modernization
     ├── 02_rds_database_reasoning.md        # RDS connection pooling, Multi-AZ & Aurora rightsizing

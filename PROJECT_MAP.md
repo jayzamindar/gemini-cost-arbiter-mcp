@@ -72,7 +72,6 @@
 | `config/instance_mappings.json` | AWS EC2 rightsizing, Graviton modernization, and On-Demand hourly rate catalog |
 | `prompts/README.md` | PromptOps architecture catalog |
 | `prompts/master_system_prompt.md` | Tier-0 Master System Prompt & Global Ontology |
-| `prompts/code_generation.txt` | Legacy architectural design prompt history |
 | `prompts/modules/01_ec2_compute_reasoning.md` | EC2 compute & Graviton reasoning module |
 | `prompts/modules/02_rds_database_reasoning.md` | RDS database idle & Multi-AZ reasoning module |
 | `prompts/modules/03_s3_storage_tiering.md` | S3 Intelligent-Tiering & Glacier module |
