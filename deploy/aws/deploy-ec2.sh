@@ -62,4 +62,4 @@ fi
 
 echo "[+] Setup completed successfully!"
 echo "To start the container, run:"
-echo "  docker compose -f deploy/aws-free-tier/docker-compose.prod.yml up -d"
+echo "  docker compose -f deploy/aws/docker-compose.prod.yml up -d"

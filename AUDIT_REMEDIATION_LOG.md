@@ -15,8 +15,8 @@
 | **CRITICAL** | 5 | `REM-003`, `REM-004`, `REM-007`, `REM-012`, `REM-014` | `OPEN` | Mutable/unbounded schemas (`extra="allow"`), CLI/rollback shell interpolation, placeholder signing secrets, missing SSE 10MB body limit (HTTP 413) & predictable session IDs |
 | **HIGH** | 7 | `REM-002`, `REM-005`, `REM-008`, `REM-009`, `REM-011`, `REM-013`, `REM-015` | `OPEN` | Missing CI `ruff`/`mypy`/`pytest-cov`/`pytest-timeout`, silent catalog fallback, LLM FinOps floor bypass, missing XML breakout & prompt compression, missing token/cost/cooldown circuit breakers, missing `risk==5`/HITL anti-replay gate, missing SQLite WAL + locking |
 | **MEDIUM** | 3 | `REM-006`, `REM-010`, `REM-016` | `OPEN` | Missing NFKC + `.strip().casefold()` & `prod`/`prd` tag detection, `clean_gemini_schema()` multi-branch `anyOf` drop, `prompts/` omitted from `Dockerfile` |
-| **LOW** | 2 | `REM-001` (`DONE`), `REM-017` (`OPEN`) | `1 DONE / 1 OPEN` | Case-sensitivity (`gemini.md` vs `GEMINI.md`), missing `PROJECT_MAP.md`/`BUILD_PROMPTS.md`, cross-file MCP URI & `modular_prompt.md` drift |
-| **TOTAL** | **17** | **`REM-001` – `REM-017`** | **`1 DONE / 16 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
+| **LOW** | 3 | `REM-001` (`DONE`), `REM-017` (`OPEN`), `REM-018` (`DONE`) | `2 DONE / 1 OPEN` | Case-sensitivity (`gemini.md` vs `GEMINI.md`), missing `PROJECT_MAP.md`/`BUILD_PROMPTS.md`, cross-file MCP URI & `modular_prompt.md` drift, multi-cloud docs/deploy standardization |
+| **TOTAL** | **18** | **`REM-001` – `REM-018`** | **`2 DONE / 16 OPEN`** | Mapped 1-to-1 to `BUILD-PROMPT-01` through `BUILD-PROMPT-10` in [`Enterprise_Blueprint.md`](Enterprise_Blueprint.md) |
 
 ---
 
@@ -226,3 +226,16 @@
   1. Create `prompts/modular_prompt.md` indexing `master_system_prompt.md` and `modules/01`–`modules/06`.
   2. Align `GEMINI.md`, `prompts/README.md`, `README.md`, and `docs/ARCHITECTURE.md` with `finops://` URIs, `sample_telemetry.json`, `clean_gemini_schema()`, `DEFAULT_MODEL`, and exact file trees/test counts.
 - **TDD Verification Test:** `tests/test_governance_docs.py::test_mcp_resource_uris_and_prompts_registry_synced` asserting all `resources/list` URIs appear in `GEMINI.md` and `README.md`, and all `prompts/modules/*.md` files are indexed in `prompts/modular_prompt.md`.
+
+---
+
+### REM-018: Standardize `docs/` Tree & Add AWS, Azure, and Gemini Deployment Packages
+- **Status:** `DONE` (2026-11-21)
+- **Severity & Category:** `LOW` | Architecture Packaging & Multi-Cloud Deployment Standardization
+- **Exact Evidence:** `docs/AWS_Deployment_Guide.md`, `deploy/aws-free-tier/`, `Repo_Baseline_AuditReport.md`
+- **Root Cause & Security/Reliability Impact:** Deployment guides and artifacts were split inconsistently between `docs/AWS_Deployment_Guide.md` and `deploy/aws-free-tier/`, `Repo_Baseline_AuditReport.md` cluttered the repository root, and Azure / Google Cloud Run + Gemini MCP client deployment packages were absent.
+- **Exact Fix Specification:**
+  1. Consolidated `docs/AWS_Deployment_Guide.md` and `deploy/aws-free-tier/README.md` into `docs/DEPLOYMENT_AWS.md`, added `docs/DEPLOYMENT_AZURE.md` and `docs/DEPLOYMENT_GEMINI.md`, and moved `Repo_Baseline_AuditReport.md` to `docs/Repo_Baseline_AuditReport.md`.
+  2. Migrated `deploy/aws-free-tier/` assets to `deploy/aws/` (`deploy-ec2.sh`, `docker-compose.prod.yml`, `lambda-adapter/Dockerfile`) and created `deploy/azure/` (`deploy-azure.sh`, `docker-compose.azure.yml`) and `deploy/gemini/` (`cloudbuild.yaml`, `service.yaml`, `mcp_configs.example.json`).
+  3. Synchronized `README.md`, `PROJECT_MAP.md`, `GEMINI.md`, `Enterprise_Blueprint.md`, and `BUILD_PROMPTS.md`.
+- **TDD Verification Test:** `tests/test_governance_docs.py::test_deployment_docs_and_packages_valid` asserting all three deployment docs, provider directories, and JSON/YAML manifests exist and parse cleanly.

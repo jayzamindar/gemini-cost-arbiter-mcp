@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -71,3 +72,39 @@ def test_legacy_plan_md_removed_and_no_stale_links() -> None:
     for doc_name in ["README.md", "PROJECT_MAP.md", "GEMINI.md", "BUILD_PROMPTS.md"]:
         content = (REPO_ROOT / doc_name).read_text(encoding="utf-8")
         assert "PLAN.md" not in content, f"Stale PLAN.md reference found in {doc_name}"
+
+
+def test_deployment_docs_and_packages_valid() -> None:
+    """Verify standardized docs/ and multi-cloud deploy/ packages exist and parse cleanly."""
+    required_paths = [
+        "docs/DEPLOYMENT_AWS.md",
+        "docs/DEPLOYMENT_AZURE.md",
+        "docs/DEPLOYMENT_GEMINI.md",
+        "docs/Repo_Baseline_AuditReport.md",
+        "deploy/aws/deploy-ec2.sh",
+        "deploy/aws/docker-compose.prod.yml",
+        "deploy/aws/lambda-adapter/Dockerfile",
+        "deploy/azure/deploy-azure.sh",
+        "deploy/azure/docker-compose.azure.yml",
+        "deploy/gemini/cloudbuild.yaml",
+        "deploy/gemini/service.yaml",
+        "deploy/gemini/mcp_configs.example.json",
+    ]
+    for rel_path in required_paths:
+        assert (REPO_ROOT / rel_path).is_file(), f"Missing deployment asset: {rel_path}"
+
+    assert not (REPO_ROOT / "Repo_Baseline_AuditReport.md").exists()
+    assert not (REPO_ROOT / "docs/AWS_Deployment_Guide.md").exists()
+
+    mcp_cfg = json.loads((REPO_ROOT / "deploy/gemini/mcp_configs.example.json").read_text(encoding="utf-8"))
+    assert "mcpServers" in mcp_cfg
+
+    for yaml_rel in [
+        "deploy/aws/docker-compose.prod.yml",
+        "deploy/azure/docker-compose.azure.yml",
+        "deploy/gemini/cloudbuild.yaml",
+        "deploy/gemini/service.yaml",
+    ]:
+        yaml_text = (REPO_ROOT / yaml_rel).read_text(encoding="utf-8")
+        assert yaml_text.strip(), f"Empty YAML manifest: {yaml_rel}"
+        assert "\t" not in yaml_text, f"Tab indentation found in YAML manifest: {yaml_rel}"

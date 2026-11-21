@@ -1,0 +1,23 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "-t"
+      - "gcr.io/$PROJECT_ID/gemini-cost-arbiter-mcp:$SHORT_SHA"
+      - "-t"
+      - "gcr.io/$PROJECT_ID/gemini-cost-arbiter-mcp:latest"
+      - "."
+
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "gcr.io/$PROJECT_ID/gemini-cost-arbiter-mcp:$SHORT_SHA"
+
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "gcr.io/$PROJECT_ID/gemini-cost-arbiter-mcp:latest"
+
+images:
+  - "gcr.io/$PROJECT_ID/gemini-cost-arbiter-mcp:$SHORT_SHA"
+  - "gcr.io/$PROJECT_ID/gemini-cost-arbiter-mcp:latest"

@@ -69,9 +69,9 @@ You are operating as a **Principal AI Systems Architect, Lead SRE, and Staff Sec
 
 1. `GEMINI.md` (This file — supreme operational & invariant rules)
 2. `Enterprise_Blueprint.md` (Architectural DoD, `BUILD-PROMPT-01..10` roadmap, verification chains)
-3. `AUDIT_REMEDIATION_LOG.md` (Forensic `REM-001..017` tickets with exact `file:line` evidence & TDD specs)
+3. `AUDIT_REMEDIATION_LOG.md` (Forensic `REM-001..018` tickets with exact `file:line` evidence & TDD specs)
 4. `PROJECT_MAP.md` & `BUILD_PROMPTS.md` (Repository index & self-contained execution playbook)
-5. `docs/ARCHITECTURE.md`, `docs/TRD.md`, `docs/PRD.md`, `docs/URD.md` (Domain & protocol specifications)
+5. `docs/ARCHITECTURE.md`, `docs/TRD.md`, `docs/PRD.md`, `docs/URD.md`, `docs/DEPLOYMENT_AWS.md`, `docs/DEPLOYMENT_AZURE.md`, `docs/DEPLOYMENT_GEMINI.md`, `docs/Repo_Baseline_AuditReport.md` (Domain, protocol & deployment specifications)
 6. `prompts/modular_prompt.md` & `prompts/master_system_prompt.md` (PromptOps registry)
 
 - **Master Navigation Hub (`README.md`):** `README.md` MUST maintain clickable relative Markdown links to every governance, specification, audit, deployment, and prompt registry document with zero broken links.

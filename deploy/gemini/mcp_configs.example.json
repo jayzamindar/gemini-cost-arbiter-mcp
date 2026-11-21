@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "gemini-cost-arbiter-stdio": {
+      "command": "python",
+      "args": [
+        "-m",
+        "gemini_cost_arbiter",
+        "run-mcp",
+        "--transport",
+        "stdio",
+        "--db-path",
+        "./data/finops.db"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+        "PLAN_SIGNING_SECRET": "${PLAN_SIGNING_SECRET}",
+        "DEFAULT_MODEL": "gemini-3.8-flash-high"
+      }
+    },
+    "gemini-cost-arbiter-sse": {
+      "url": "https://your-arbiter-host.example.com/sse",
+      "headers": {
+        "Authorization": "Bearer ${MCP_API_KEY}"
+      }
+    }
+  }
+}

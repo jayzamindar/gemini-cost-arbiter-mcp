@@ -5,7 +5,7 @@
 [![Model Context Protocol](https://img.shields.io/badge/MCP-JSON--RPC%202.0-orange.svg)](https://modelcontextprotocol.io/)
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2.10%2B-green.svg)](https://docs.pydantic.dev/)
 [![Docker Image Size](https://img.shields.io/badge/docker-65.5MB-brightgreen.svg)](#-docker-packaging--local-execution)
-[![AWS Free Tier](https://img.shields.io/badge/AWS-100%25%20Free%20Tier-success.svg)](deploy/aws-free-tier/)
+[![AWS Free Tier](https://img.shields.io/badge/AWS-100%25%20Free%20Tier-success.svg)](deploy/aws/)
 [![Tests Passing](https://img.shields.io/badge/tests-55%2F55%20passing-brightgreen.svg)](#3-run-the-automated-test-suite)
 
 An enterprise-grade FinOps intelligence engine and **Model Context Protocol (MCP)** server. The arbiter continuously ingests multi-dimensional cloud utilization telemetry across AWS enterprise infrastructure (**EC2 compute, RDS databases, S3 storage, detached EBS volumes, and unassociated Elastic IPs**), detects systemic capacity and financial waste, and leverages **Google Gemini 3.8 Flash High** with configurable reasoning thinking budgets (and secondary multi-model fallback) to synthesize deterministic, schema-governed remediation execution payloads.
@@ -22,9 +22,10 @@ An enterprise-grade FinOps intelligence engine and **Model Context Protocol (MCP
 | **Repository Map** | [`PROJECT_MAP.md`](PROJECT_MAP.md) | Complete module, test, prompt, config, and deployment index |
 | **Execution Playbook** | [`BUILD_PROMPTS.md`](BUILD_PROMPTS.md) | Self-contained `BUILD-PROMPT-01..10` prompts with fail-closed commit gates |
 | **System Specifications** | [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`TRD.md`](docs/TRD.md) · [`PRD.md`](docs/PRD.md) · [`URD.md`](docs/URD.md) | C4 diagrams, mathematical formulas, product & user requirements |
-| **Audit & Readiness** | [`Repo_Baseline_AuditReport.md`](Repo_Baseline_AuditReport.md) · [`Production_Readiness_Report.md`](docs/Production_Readiness_Report.md) | 10-dimension baseline audit and 8-pillar SRE PRR |
+| **Audit & Readiness** | [`Repo_Baseline_AuditReport.md`](docs/Repo_Baseline_AuditReport.md) · [`Production_Readiness_Report.md`](docs/Production_Readiness_Report.md) | 10-dimension baseline audit and 8-pillar SRE PRR |
 | **PromptOps & Config** | [`prompts/README.md`](prompts/README.md) · [`master_system_prompt.md`](prompts/master_system_prompt.md) · [`instance_mappings.json`](config/instance_mappings.json) | Tier-0 system prompt, domain modules, AWS pricing catalog |
-| **Containers & CI/CD** | [`Dockerfile`](Dockerfile) · [`docker-compose.yml`](docker-compose.yml) · [`test.yml`](.github/workflows/test.yml) · [`AWS Deployment Guide`](docs/AWS_Deployment_Guide.md) | Multi-stage non-root container, CI workflow, AWS Free Tier blueprints |
+| **Cloud Deployments** | [`DEPLOYMENT_AWS.md`](docs/DEPLOYMENT_AWS.md) · [`DEPLOYMENT_AZURE.md`](docs/DEPLOYMENT_AZURE.md) · [`DEPLOYMENT_GEMINI.md`](docs/DEPLOYMENT_GEMINI.md) | Turnkey AWS, Azure ACA/ACR, and Google Cloud Run / Gemini MCP guides |
+| **Containers & CI/CD** | [`Dockerfile`](Dockerfile) · [`docker-compose.yml`](docker-compose.yml) · [`test.yml`](.github/workflows/test.yml) | Multi-stage non-root container and multi-version CI workflow |
 
 ---
 
@@ -382,13 +383,12 @@ docker compose up -d
 
 ---
 
-## ☁️ Zero-Cost AWS Free Tier Deployment
+## ☁️ Multi-Cloud & Gemini Deployment Packages
 
-Turnkey blueprints for deploying the server at **$0.00/month** on AWS Free Tier are located in [deploy/aws-free-tier/](deploy/aws-free-tier/):
-* **Option 1 (EC2 Free Tier Host):** Automated setup script [deploy-ec2.sh](deploy/aws-free-tier/deploy-ec2.sh) for `t3.micro` or `t4g.small` instances with memory-capped Docker Compose ([docker-compose.prod.yml](deploy/aws-free-tier/docker-compose.prod.yml)).
-* **Option 2 (Serverless Lambda Container):** Serverless container via [lambda-adapter/Dockerfile](deploy/aws-free-tier/lambda-adapter/Dockerfile) using the AWS Lambda Web Adapter with direct Function URL (1M free requests/month).
-
-See [deploy/aws-free-tier/README.md](deploy/aws-free-tier/README.md) for step-by-step instructions.
+Turnkey blueprints for deploying across **AWS**, **Microsoft Azure**, and **Google Cloud Run / Gemini MCP** are located under `deploy/` and `docs/`:
+* **AWS Free Tier (`deploy/aws/`):** EC2 setup script [deploy-ec2.sh](deploy/aws/deploy-ec2.sh), memory-capped compose [docker-compose.prod.yml](deploy/aws/docker-compose.prod.yml), and serverless Lambda container [lambda-adapter/Dockerfile](deploy/aws/lambda-adapter/Dockerfile). Guide: [docs/DEPLOYMENT_AWS.md](docs/DEPLOYMENT_AWS.md).
+* **Microsoft Azure (`deploy/azure/`):** Turnkey ACR + Azure Container Apps script [deploy-azure.sh](deploy/azure/deploy-azure.sh) and compose [docker-compose.azure.yml](deploy/azure/docker-compose.azure.yml). Guide: [docs/DEPLOYMENT_AZURE.md](docs/DEPLOYMENT_AZURE.md).
+* **Google Cloud Run & Gemini MCP (`deploy/gemini/`):** Cloud Build [cloudbuild.yaml](deploy/gemini/cloudbuild.yaml), Cloud Run manifest [service.yaml](deploy/gemini/service.yaml), and client configs [mcp_configs.example.json](deploy/gemini/mcp_configs.example.json). Guide: [docs/DEPLOYMENT_GEMINI.md](docs/DEPLOYMENT_GEMINI.md).
 
 ---
 
@@ -437,27 +437,35 @@ gemini-cost-arbiter-mcp/
 ├── config/
 │   └── instance_mappings.json       # AWS EC2 rightsizing & Graviton modernization lookup catalog
 ├── deploy/
-│   └── aws-free-tier/               # Turnkey AWS Free Tier deployment blueprints
-│       ├── README.md                # Zero-cost AWS setup guide
-│       ├── deploy-ec2.sh            # Automated EC2 t3.micro / t4g.small setup script
-│       ├── docker-compose.prod.yml  # Production compose file with memory bounds (512M)
-│       └── lambda-adapter/
-│           └── Dockerfile           # Serverless container with AWS Lambda Web Adapter
+│   ├── aws/                         # AWS Free Tier EC2 & Lambda deployment blueprints
+│   │   ├── deploy-ec2.sh            # Automated EC2 t3.micro / t4g.small setup script
+│   │   ├── docker-compose.prod.yml  # Production compose file with memory bounds (512M)
+│   │   └── lambda-adapter/
+│   │       └── Dockerfile           # Serverless container with AWS Lambda Web Adapter
+│   ├── azure/                       # Azure Container Apps & ACR deployment blueprints
+│   │   ├── deploy-azure.sh          # Turnkey Azure Container Apps + Key Vault script
+│   │   └── docker-compose.azure.yml # Azure compose manifest
+│   └── gemini/                      # Google Cloud Run & MCP client packaging
+│       ├── cloudbuild.yaml          # Google Cloud Build pipeline
+│       ├── service.yaml             # Cloud Run declarative service manifest
+│       └── mcp_configs.example.json # Ready-to-copy stdio & SSE MCP client configs
 ├── docs/
 │   ├── ARCHITECTURE.md              # System Architecture Document (C4 models & sequence flows)
-│   ├── AWS_Deployment_Guide.md      # Turnkey AWS deployment guide (EC2, Lambda, IAM, SSM)
+│   ├── DEPLOYMENT_AWS.md            # AWS EC2 Free Tier & Lambda deployment guide
+│   ├── DEPLOYMENT_AZURE.md          # Azure ACR & Container Apps deployment guide
+│   ├── DEPLOYMENT_GEMINI.md         # Google Cloud Run & Gemini MCP client guide
 │   ├── PRD.md                       # Product Requirements Document
 │   ├── Production_Readiness_Report.md # SRE Production Readiness Review (PRR) 8-pillar audit
+│   ├── Repo_Baseline_AuditReport.md # 10-dimension forensic baseline audit report (Grade: 100/100)
 │   ├── TRD.md                       # Technical Requirements Document
 │   └── URD.md                       # User Requirements Document
 ├── Dockerfile                       # Multi-stage, non-root, security-hardened container (65.5MB)
 ├── docker-compose.yml               # Local compose stack with persistent SQLite volume
 ├── GEMINI.md                        # Master AI Agent & Gemini development guide
 ├── Enterprise_Blueprint.md          # Master production blueprint & DoD
-├── AUDIT_REMEDIATION_LOG.md         # Forensic audit & REM-001..017 backlog
+├── AUDIT_REMEDIATION_LOG.md         # Forensic audit & REM-001..018 backlog
 ├── PROJECT_MAP.md                   # Complete repository & module index
 ├── BUILD_PROMPTS.md                 # Deterministic build prompt playbook
-├── Repo_Baseline_AuditReport.md     # 10-dimension forensic baseline audit report (Grade: 100/100)
 ├── prompts/
 │   ├── README.md                    # PromptOps catalog & engineering guide
 │   ├── master_system_prompt.md      # Tier-0 Master System Prompt & Global Ontology

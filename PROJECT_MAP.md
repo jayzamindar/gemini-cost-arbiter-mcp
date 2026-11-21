@@ -82,10 +82,14 @@
 | `Dockerfile` | Multi-stage non-root (`appuser`) production container |
 | `docker-compose.yml` | Local SSE stack with persistent `./data` volume |
 | `.github/workflows/test.yml` | GitHub Actions CI matrix (Python 3.13, 3.14) |
-| `deploy/aws-free-tier/README.md` | Zero-cost AWS Free Tier deployment guide |
-| `deploy/aws-free-tier/deploy-ec2.sh` | Automated EC2 Free Tier setup script |
-| `deploy/aws-free-tier/docker-compose.prod.yml` | Production compose override with 512M memory cap |
-| `deploy/aws-free-tier/lambda-adapter/Dockerfile` | Serverless AWS Lambda Web Adapter container |
+| `deploy/aws/deploy-ec2.sh` | Automated EC2 Free Tier setup script |
+| `deploy/aws/docker-compose.prod.yml` | Production AWS compose override with 512M memory cap |
+| `deploy/aws/lambda-adapter/Dockerfile` | Serverless AWS Lambda Web Adapter container |
+| `deploy/azure/deploy-azure.sh` | Azure Container Apps + ACR deployment script |
+| `deploy/azure/docker-compose.azure.yml` | Azure Container Registry / ACA compose definition |
+| `deploy/gemini/cloudbuild.yaml` | Google Cloud Build pipeline for `gemini-cost-arbiter-mcp` |
+| `deploy/gemini/service.yaml` | Google Cloud Run declarative service manifest |
+| `deploy/gemini/mcp_configs.example.json` | Plug-and-play `stdio` and `SSE` MCP client configs |
 | `sample_telemetry.json` | Sample multi-resource telemetry batch for CLI smoke tests |
 
 ---
@@ -99,10 +103,12 @@
 | [`AUDIT_REMEDIATION_LOG.md`](AUDIT_REMEDIATION_LOG.md) | Forensic audit tickets (`REM-001`–`REM-017`) with `file:line` evidence & TDD specs |
 | [`PROJECT_MAP.md`](PROJECT_MAP.md) | Repository index & module map (this file) |
 | [`BUILD_PROMPTS.md`](BUILD_PROMPTS.md) | Self-contained `BUILD-PROMPT-01..10` execution playbook |
-| [`Repo_Baseline_AuditReport.md`](Repo_Baseline_AuditReport.md) | Initial 10-dimension baseline audit report |
+| [`docs/Repo_Baseline_AuditReport.md`](docs/Repo_Baseline_AuditReport.md) | Initial 10-dimension baseline audit report |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System Architecture Document (C4 & sequence flows) |
 | [`docs/TRD.md`](docs/TRD.md) | Technical Requirements Document |
 | [`docs/PRD.md`](docs/PRD.md) | Product Requirements Document |
 | [`docs/URD.md`](docs/URD.md) | User Requirements Document |
-| [`docs/AWS_Deployment_Guide.md`](docs/AWS_Deployment_Guide.md) | AWS EC2, Lambda, IAM, and SSM deployment guide |
+| [`docs/DEPLOYMENT_AWS.md`](docs/DEPLOYMENT_AWS.md) | AWS EC2 Free Tier & Lambda deployment guide |
+| [`docs/DEPLOYMENT_AZURE.md`](docs/DEPLOYMENT_AZURE.md) | Azure ACR & Container Apps deployment guide |
+| [`docs/DEPLOYMENT_GEMINI.md`](docs/DEPLOYMENT_GEMINI.md) | Google Cloud Run & Gemini MCP client guide |
 | [`docs/Production_Readiness_Report.md`](docs/Production_Readiness_Report.md) | 8-pillar SRE Production Readiness Review |

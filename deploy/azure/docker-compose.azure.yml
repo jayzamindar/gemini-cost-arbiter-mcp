@@ -1,0 +1,40 @@
+services:
+  gemini-cost-arbiter-mcp:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    image: ${ACR_NAME:-acrcostarbiter01}.azurecr.io/gemini-cost-arbiter-mcp:latest
+    container_name: gemini-cost-arbiter-azure
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - REQUIRE_AUTH=${REQUIRE_AUTH:-true}
+      - MCP_API_KEY=${MCP_API_KEY}
+      - PLAN_SIGNING_SECRET=${PLAN_SIGNING_SECRET}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-gemini-3.8-flash-high}
+      - THINKING_BUDGET=${THINKING_BUDGET:-2048}
+      - MAX_OUTPUT_TOKENS=${MAX_OUTPUT_TOKENS:-8192}
+      - MAX_PAYLOAD_BYTES=${MAX_PAYLOAD_BYTES:-10485760}
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+      - DB_PATH=/app/data/finops.db
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ../../data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').getcode() == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M

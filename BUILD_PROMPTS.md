@@ -177,7 +177,7 @@ Execute ONLY this task (`BUILD-PROMPT-09`), follow all TDD/zero-hallucination ru
 ### Scope (`REM-015`, `REM-016`)
 1. Add `filelock>=3.16.0` to `pyproject.toml` and `requirements.txt`.
 2. Update `FinOpsLedger` (`ledger/store.py`) to enable `PRAGMA journal_mode=WAL`, `PRAGMA busy_timeout=5000`, `threading.RLock`, `filelock.FileLock`, auto-create parent directories, and `ensure_ascii=False` in JSON serialization.
-3. Copy `prompts/` into `/app/prompts/` in `Dockerfile` and support `PROMPTS_DIR` in `ArbiterConfig`.
+3. Copy `prompts/` into `/app/prompts/` in `Dockerfile` (and `deploy/aws/lambda-adapter/Dockerfile`), support `PROMPTS_DIR` in `ArbiterConfig`, and verify parity with `docs/DEPLOYMENT_AWS.md`, `docs/DEPLOYMENT_AZURE.md`, and `docs/DEPLOYMENT_GEMINI.md`.
 4. Add concurrent write tests in `tests/test_sqlite_ledger.py` and cwd-portability tests in `tests/test_prompt_security.py`.
 
 ### Auto-Commit & Fail-Closed Verification Gate
@@ -196,7 +196,7 @@ Execute ONLY this task (`BUILD-PROMPT-10`), follow all TDD/zero-hallucination ru
 
 ### Scope (`REM-017`)
 1. Create `prompts/modular_prompt.md` indexing `master_system_prompt.md` and `prompts/modules/01..06`.
-2. Synchronize `README.md`, `prompts/README.md`, `docs/ARCHITECTURE.md`, and `GEMINI.md` (`finops://` URIs, `sample_telemetry.json`, `clean_gemini_schema()`, `DEFAULT_MODEL`, accurate test counts).
+2. Synchronize `README.md`, `prompts/README.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT_AWS.md`, `docs/DEPLOYMENT_AZURE.md`, `docs/DEPLOYMENT_GEMINI.md`, and `GEMINI.md` (`finops://` URIs, `sample_telemetry.json`, `clean_gemini_schema()`, `DEFAULT_MODEL`, accurate test counts).
 3. Expand `tests/test_governance_docs.py` to assert 100% URI and prompt registry parity and run the Stage 2 CLI & coverage verification suite.
 
 ### Auto-Commit & Fail-Closed Verification Gate
